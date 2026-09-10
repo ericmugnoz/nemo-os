@@ -209,6 +209,20 @@ Si quieres colaborar, dos formas directas de hacerlo:
 
 No hay ninguna recompensa exclusiva a cambio, ni ninguna función de Nemo OS reservada para quien colabore — el código es y seguirá siendo abierto para todos, colabores o no. Es, simplemente, la forma más directa de decir "esto merece existir" con algo más que palabras.
 
+## Enlaces
+
+### Libros de la colección
+
+- **Capitán de mi propio sistema** — El diario de Nemo OS → [amzn.eu/d/030HpOwK](https://amzn.eu/d/030HpOwK)
+- **El Nautilus, pieza por pieza** — Manual técnico de Nemo OS → [amzn.eu/d/08wkFff8](https://amzn.eu/d/08wkFff8)
+- **Cartas de navegación del Nautilus** — Guía de estudios de sistemas operativos, con Nemo OS → [amzn.eu/d/0fZR5FKS](https://amzn.eu/d/0fZR5FKS)
+- **40seconds · Crónicas de intrusión — Vol. 1** (Diarios de un hacker) → [amzn.eu/d/08tG6k2Q](https://amzn.eu/d/08tG6k2Q)
+- **40seconds · Crónicas de intrusión — Vol. 2** (Diarios de un hacker) → [amzn.eu/d/03FcGv4D](https://amzn.eu/d/03FcGv4D)
+
+### Comunidad
+
+- **r/Astillero** — bitácora del laboratorio, novedades y comunidad → [reddit.com/r/Astillero](https://www.reddit.com/r/Astillero)
+
 ## Licencia
 
 Apache 2.0. Úsalo libremente.
