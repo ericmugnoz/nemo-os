@@ -1,0 +1,48 @@
+Nemo OS
+Copyright 2026 Eric Mugnoz
+
+Este producto incluye software desarrollado como parte del proyecto Nemo OS
+(https://github.com/ericmugnoz/nemo-os), distribuido bajo la licencia Apache,
+versión 2.0. Ver el archivo LICENSE.
+
+
+TRABAJO DE TERCEROS INCLUIDO
+============================
+
+Todo el código de este repositorio está escrito desde cero para Nemo OS, con
+dos excepciones, que se listan aquí con su licencia.
+
+
+1. Lua 5.5 — en lua/src/
+------------------------
+
+Copyright (C) 1994-2026 Lua.org, PUC-Rio.
+Licencia MIT. El aviso completo está al final de lua/src/lua.h.
+
+El intérprete está portado a Nemo OS (ver lua/nemo/, que es código propio de
+este proyecto: la capa que lo conecta con las llamadas al sistema), pero los
+archivos de lua/src/ conservan el código original de PUC-Rio.
+
+
+2. El paquete de tipografías — fuentes/FUENTES.NFP
+--------------------------------------------------
+
+Generado con herramientas/nfnt_pack.py a partir de las tipografías DejaVu
+(https://dejavu-fonts.github.io/), que se distribuyen bajo una licencia de tipo
+Bitstream Vera: permite usarlas, redistribuirlas y crear obras derivadas.
+
+Lo que viaja en el repositorio es el paquete ya generado —los glifos
+pre-rasterizados en el formato propio del sistema— para que compilar Nemo OS no
+exija tener instaladas ni las tipografías ni Pillow.
+
+Fuentes DejaVu: copyright de sus autores. Bitstream Vera Sans:
+Copyright (c) 2003 Bitstream, Inc.
+
+
+NO INCLUIDO
+===========
+
+El firmware de arranque de la Raspberry Pi (start4.elf, fixup4.dat, los .dtb y
+overlays/) NO está en este repositorio. Es de la Raspberry Pi Foundation, tiene
+su propia licencia, y se descarga aparte: el README lo explica en «La carpeta de
+arranque».
