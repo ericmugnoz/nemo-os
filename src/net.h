@@ -1,19 +1,22 @@
 // net.h -- Nemo OS
-// ARP + IPv4 + ICMP + UDP + TCP -- ver net.c para el porque y el
-// alcance (solo Ethernet, solo IPv4; TCP solo en escucha; UDP solo
-// para DHCP de momento).
+// ARP + IPv4 + ICMP, y el reparto de UDP y TCP a sus archivos. Ver
+// net.c para el porque y el alcance: solo Ethernet, solo IPv4, sin
+// fragmentacion y sin resolutor de nombres. UDP esta abierto a los
+// programas (udp_sock.c) y TCP tiene las dos mitades, la que escucha
+// (tcp.c) y la que conecta (tcp_cliente.c).
 #ifndef NET_H
 #define NET_H
 
 #include <stdint.h>
 #include <stdbool.h>
 
-// Puerto TCP en el que Nemo OS escucha (Fase 3a: eco; Fase 3b: la
-// shell). 2323 en vez del 23 clasico de telnet a proposito -- no es
-// telnet (no negocia opciones), y asi no choca con nada del Mac.
+// Puerto TCP en el que Nemo OS escucha: ahi se sirve la shell remota
+// (netshell.c). 2323 en vez del 23 clasico de telnet a proposito --
+// esto no es telnet (no negocia opciones), y asi no choca con el
+// servicio que pueda tener levantado el ordenador de al lado.
 #define NET_PUERTO_SHELL 2323
 
-// Llamar una vez, despues de que el enlace este arriba (genet_link_up()
+// Llamar una vez, despues de que el enlace este arriba (nic_link_up()
 // debe devolver true). Si no hay enlace, net_poll() no hace nada.
 void net_init(void);
 

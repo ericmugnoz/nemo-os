@@ -13,8 +13,9 @@
 //
 // ESTO NO TOCA EL SISTEMA DE ARCHIVOS. Trabaja contra tres funciones que
 // le pasan desde fuera: leer del paquete, crear un archivo y escribir en
-// el. En el kernel las pone NemoFS; en la prueba del Mac, memoria. No es
-// purismo -- es lo que permite provocar aqui todos los paquetes
+// el. En el kernel las pone NemoFS; fuera del kernel, en el ordenador de
+// desarrollo, pueden escribir en memoria y ya esta. No es purismo -- es
+// lo que permite provocar sin placa todos los paquetes
 // retorcidos que un proxy honrado no va a mandar nunca, y son justo los
 // que importan: los nombres son texto que viene de fuera, y un nombre
 // con '..' dentro es una forma de escribir donde no toca.

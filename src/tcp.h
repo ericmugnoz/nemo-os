@@ -24,7 +24,10 @@ uint32_t tcp_manejar(const uint8_t *seg, uint32_t seg_len,
                      uint8_t *out, uint32_t out_max);
 
 // --- Ganchos de la APLICACION, implementados fuera de tcp.c ---
-// (netshell.c en el kernel; un eco en la bateria de pruebas del host).
+// Los implementa netshell.c, la shell remota. Estan separados del
+// protocolo a proposito: para servir otra cosa en este puerto se
+// escriben estas tres funciones y no se toca la maquina de estados.
+//
 // Al establecerse una conexion: escribir un saludo en 'salida' (hasta
 // 'max' bytes) y devolver su longitud, o 0 para no enviar nada.
 uint32_t tcp_app_on_connect(uint8_t *salida, uint32_t max);

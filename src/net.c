@@ -1,23 +1,43 @@
 // net.c -- Nemo OS
-// ARP + IPv4 + ICMP, encima del driver Ethernet (genet_pi4.c en la
-// Pi 4). Fase 2 del roadmap de red: el objetivo concreto es responder
-// a un `ping` desde otro ordenador. Todo lo de aqui es sondeo puro,
-// llamado una vez por vuelta desde task_yield() (tasks.c) -- el mismo
-// patron que ya usa la entrada de teclado/raton.
+// La capa de red del sistema: ARP, IPv4, ICMP, y el reparto de lo que
+// llega a quien le toca. Debajo tiene una tarjeta cualquiera vista a
+// traves de nic.h (el Ethernet integrado en la Pi 4, una virtio-net en
+// QEMU) y encima, cada protocolo de transporte en su propio archivo.
 //
-// Configuracion de red: DIRECCION FIJA, sin DHCP (un cliente DHCP es
-// su propio protocolo, para otra fase). Conectado directo a un Mac
-// sin router de por medio, se eligio una IP dentro del rango
-// "link-local" (169.254.0.0/16, RFC 3927) porque es precisamente el
-// rango que macOS se autoasigna solo cuando no encuentra un servidor
-// DHCP en una interfaz Ethernet -- con eso, el `ping` deberia
-// funcionar sin tocar nada en el Mac.
+// Todo lo de aqui es SONDEO PURO, sin interrupciones: task_yield()
+// (tasks.c) llama a net_poll() cien veces por segundo, el mismo patron
+// que ya usa la entrada de teclado y raton. Ninguna funcion de este
+// archivo espera a nada.
 //
-// Lo que este archivo SABE hacer: responder ARP (quien tiene mi IP),
-// y responder ICMP echo request (ping) dirigido a mi IP. Lo que NO
-// hace: enviar trafico por iniciativa propia (no hace falta para
-// responder a un ping), fragmentacion IP, ni ningun protocolo de
-// transporte (UDP/TCP quedan para una fase posterior).
+// LO QUE HACE
+//
+//   * Responde ARP ("quien tiene mi IP"). La tabla de direcciones
+//     aprendidas, con su caducidad, esta en arp.c.
+//   * Responde al ping: un ICMP echo request dirigido a nuestra IP.
+//   * Envia hacia fuera. net_enviar_ipv4() y net_enviar_udp() eligen
+//     el salto siguiente segun la mascara (la otra maquina esta en
+//     nuestra red, o hay que entregarlo a la pasarela), resuelven su
+//     MAC por ARP y entregan la trama. Admiten direcciones de
+//     DIFUSION, que es lo que permite hablar con una red en la que
+//     todavia no se conoce a nadie.
+//   * Reparte lo que llega. El UDP del puerto 68 va al cliente DHCP
+//     (dhcp.c) y el resto a los sockets de los programas
+//     (udp_sock.c). El TCP se reparte entre las dos mitades que
+//     conviven: la que ESCUCHA (tcp.c, que sirve la shell remota) y la
+//     que CONECTA (tcp_cliente.c, debajo del cliente HTTP).
+//   * Consigue la configuracion: se la pide al router por DHCP y, si
+//     no hay router, usa una direccion de reserva que calcula sola.
+//     El porque de las dos esta mas abajo, en "Configuracion de red
+//     de esta placa".
+//
+// LO QUE NO HACE
+//
+//   * Fragmentacion IP, ni IPv6.
+//   * Mandar pings por iniciativa propia: solo los contesta.
+//   * Nombres. No hay resolutor de DNS en ninguna parte del sistema:
+//     net_get_dns() dice que servidor nos dio el DHCP, pero nadie le
+//     pregunta nunca nada. Cada programa de red lleva dentro la
+//     direccion escrita en numeros.
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -628,7 +648,11 @@ static uint32_t manejar_ipv4(const uint8_t *frame, uint32_t len, uint8_t *salida
         return ETH_HDR_LEN + IP_MIN_HDR_LEN + tcp_len;
     }
 
-    if (protocolo != IP_PROTO_ICMP) return 0; // UDP: fase posterior
+    // Cualquier otra cosa. UDP y TCP ya se atendieron mas arriba, asi
+    // que aqui solo puede caer un protocolo que no conocemos: se
+    // descarta sin mas. No somos un router y no tenemos nada que
+    // contestar en su nombre.
+    if (protocolo != IP_PROTO_ICMP) return 0;
     if (ip_total_len < ihl + ICMP_HDR_LEN) return 0;
 
     const uint8_t *icmp = ip + ihl;

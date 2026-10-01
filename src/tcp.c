@@ -1,7 +1,10 @@
 // tcp.c -- Nemo OS
-// TCP minimo (RFC 793), Fase 3a del roadmap de red. Encima de net.c
-// (IPv4), que le pasa cada segmento dirigido a nuestra IP y envia lo
-// que este archivo devuelva.
+// La mitad de TCP (RFC 793) que ESCUCHA: acepta conexiones que vienen
+// de fuera. La que conecta hacia fuera es otro archivo,
+// tcp_cliente.c, y las dos comparten las cuentas de tcp_comun.c.
+//
+// Va encima de net.c (IPv4), que le pasa cada segmento dirigido a
+// nuestra IP y envia lo que este archivo devuelva.
 //
 // SIMPLIFICACIONES CONSCIENTES -- las mismas decisiones que ya se
 // tomaron en el resto del sistema (Lua en vez de Python, NIMG en vez
@@ -19,16 +22,17 @@
 //  * SIN reordenacion: se asume que los segmentos llegan en orden. Un
 //    segmento fuera de secuencia se descarta (y se re-ACKea lo que si
 //    tenemos, que es lo que provoca que el otro extremo lo reenvie).
-//  * Cada segmento entrante produce COMO MUCHO un segmento saliente --
-//    encaja con el modelo "una trama entra, una trama sale" de
-//    net_poll(). El ACK se lleva a caballo ("piggyback") sobre los
-//    datos que enviemos, como hace cualquier TCP real.
+//  * Cada segmento entrante produce COMO MUCHO un segmento saliente.
+//    Es la forma que tiene net.c de tratar una trama recibida:
+//    manejar_ipv4() devuelve una respuesta o ninguna, nunca dos. El
+//    ACK se lleva a caballo ("piggyback") sobre los datos que
+//    enviemos, como hace cualquier TCP real.
 //
-// La APLICACION esta separada del protocolo: tcp_on_data() decide que
-// hacer con los datos recibidos y que devolver. Ahora es un ECO (lo
-// que llega, se devuelve tal cual) -- la prueba verificable de que el
-// protocolo funciona, con `nc` desde el Mac. La Fase 3b cambia esa
-// unica funcion por la shell, y el protocolo no se toca.
+// La APLICACION esta separada del protocolo: los ganchos tcp_app_* de
+// tcp.h deciden que hacer con los datos recibidos y que devolver.
+// Quien los implementa es netshell.c, la shell remota. El protocolo
+// no sabe quien esta al otro lado, y esa separacion es la que permite
+// poner otra cosa ahi sin tocar la maquina de estados.
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -97,9 +101,8 @@ static uint32_t rcv_nxt = 0;   // siguiente numero de secuencia que esperamos re
 static uint32_t isn_contador = 0x1A2B3C4D; // "aleatorio" de andar por casa, ver tcp_escuchar
 
 // La aplicacion vive fuera de este archivo -- ver los tres ganchos
-// tcp_app_* en tcp.h. En la Fase 3a era un eco (ahora solo en la
-// bateria de pruebas del host); desde la Fase 3b es la shell de red
-// (netshell.c). El protocolo no sabe cual de las dos es.
+// tcp_app_* en tcp.h. Aqui dentro no hay ni una linea que sepa que
+// quien contesta es la shell de red (netshell.c).
 
 static void volver_a_escuchar(void) {
     estado = ESCUCHANDO;

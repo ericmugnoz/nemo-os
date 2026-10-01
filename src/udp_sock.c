@@ -3,8 +3,9 @@
 #include "udp_sock.h"
 
 // El puerto del cliente DHCP. Esta escrito aqui y no incluido de dhcp.h a
-// proposito: este archivo no depende de nada del sistema, y es lo que
-// permite compilarlo tal cual en la prueba del Mac.
+// proposito: asi este archivo no depende de nada del sistema, y se puede
+// compilar tal cual fuera del kernel, en el ordenador de desarrollo, para
+// probar la cola de datagramas sin arrancar la placa.
 #define PUERTO_DHCP_CLIENTE 68
 
 typedef struct {
