@@ -1,0 +1,42 @@
+; Aronnax 1
+ventana titulo="Panel del Nautilus" x=100 y=100 ancho=400 alto=216 maximizar=1 minimizar=1 cerrar=1
+control tipo="Etiqueta" nombre="Etiqueta1" x=24 y=24 ancho=100 alto=20 texto="Luz"
+control tipo="Led" nombre="Led1" x=24 y=48 ancho=24 alto=24 pin=17
+control tipo="Boton" nombre="Boton1" x=64 y=48 ancho=104 alto=26 texto="Encender"
+control tipo="Etiqueta" nombre="Etiqueta2" x=208 y=24 ancho=160 alto=20 texto="Brillo: 50 %"
+control tipo="Pwm" nombre="Pwm1" x=208 y=56 ancho=168 alto=20 pin=18
+control tipo="Etiqueta" nombre="Etiqueta3" x=24 y=104 ancho=160 alto=20 texto="Pulsador (GPIO 4)"
+control tipo="Pulsador" nombre="Pulsador1" x=24 y=128 ancho=24 alto=24 pin=4
+control tipo="Etiqueta" nombre="Etiqueta4" x=208 y=104 ancho=160 alto=20 texto="Sensor: -"
+control tipo="Analogico" nombre="Analogico1" x=208 y=136 ancho=168 alto=16 canal=0
+---- codigo ----
+; Panel del Nautilus: un LED que se enciende y se apaga, el brillo de
+; otro LED, un pulsador de verdad y un sensor analogico (MCP3008).
+Global encendido
+
+Function Ventana_Abre()
+  SetSliderValue Pwm1, 50
+  GpioPwm 18, 1000, 50 * 100     ; el LED del 18, a la mitad desde el principio
+End Function
+
+Function Boton1_Click()
+  encendido = 1 - encendido
+  Led1_Pon(encendido)
+  If encendido
+    SetGadgetText Boton1, "Apagar"
+  Else
+    SetGadgetText Boton1, "Encender"
+  EndIf
+End Function
+
+Function Pwm1_Cambia(valor)
+  SetGadgetText Etiqueta2, "Brillo: " + Str$(valor) + " %"
+End Function
+
+Function Pulsador1_Cambia(valor)
+  If valor = 1 Then Boton1_Click()
+End Function
+
+Function Analogico1_Cambia(valor)
+  SetGadgetText Etiqueta4, "Sensor: " + Str$(valor)
+End Function

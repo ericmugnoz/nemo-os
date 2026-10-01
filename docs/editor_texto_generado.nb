@@ -1,0 +1,155 @@
+; Programa generado por Aronnax, el diseñador de Nemo Basic.
+; ---- Parte generada: no la edites aqui; cambia el diseño en Aronnax ----
+Global Etiqueta1
+Global Campo1
+Global Boton1
+Global Boton2
+Global Texto1
+Global Etiqueta2
+Global MenuNuevo
+Global MenuAbrir
+Global MenuGuardar
+Global MenuEmpezarcon
+Global MenuUnacarta
+Global MenuUnalista
+Global MenuSalir
+Global MenuAcercade
+Global aronnax_dw
+Global aronnax_dh
+Global Barra
+CreateWindow "Editor de texto", 100, 100, 560, 380
+aronnax_barra_menus = WindowMenu()
+aronnax_menu = CreateMenu("Archivo", 0, aronnax_barra_menus)
+MenuNuevo = CreateMenu("Nuevo", 1, aronnax_menu)
+MenuAbrir = CreateMenu("Abrir", 2, aronnax_menu)
+MenuGuardar = CreateMenu("Guardar", 3, aronnax_menu)
+MenuEmpezarcon = CreateMenu("Empezar con", 4, aronnax_menu)
+MenuUnacarta = CreateMenu("Una carta", 5, MenuEmpezarcon)
+MenuUnalista = CreateMenu("Una lista", 6, MenuEmpezarcon)
+CreateMenu "", 0, aronnax_menu
+MenuSalir = CreateMenu("Salir", 7, aronnax_menu)
+aronnax_menu = CreateMenu("Ayuda", 0, aronnax_barra_menus)
+MenuAcercade = CreateMenu("Acerca de", 8, aronnax_menu)
+Barra = CreateToolBar("tb_basica24.nimg", 0, 0, 0, 0)
+SetToolBarTips Barra, "Nuevo,Abrir,Guardar,Cortar,Copiar,Pegar,Deshacer,Ejecutar,Parar,Ayuda"
+Etiqueta1 = CreateLabel("Archivo:", 12, 44, 60, 20)
+Campo1 = CreateTextField(76, 40, 240, 26)
+Boton1 = CreateButton("Abrir", 326, 40, 76, 26)
+Boton2 = CreateButton("Guardar", 408, 40, 76, 26)
+Texto1 = CreateTextArea(12, 76, 536, 264)
+Etiqueta2 = CreateLabel("Listo.", 12, 350, 536, 20)
+Aronnax_Recolocar()
+Repeat
+  aronnax_e = WaitEvent()
+  If aronnax_e = EVENT_MENUACTION
+    aronnax_dato = EventData()
+    If aronnax_dato = 1 Then MenuNuevo_Click()
+    If aronnax_dato = 2 Then MenuAbrir_Click()
+    If aronnax_dato = 3 Then MenuGuardar_Click()
+    If aronnax_dato = 5 Then MenuUnacarta_Click()
+    If aronnax_dato = 6 Then MenuUnalista_Click()
+    If aronnax_dato = 7 Then MenuSalir_Click()
+    If aronnax_dato = 8 Then MenuAcercade_Click()
+  EndIf
+  If aronnax_e = EVENT_GADGETACTION
+    aronnax_fuente = EventSource()
+    If aronnax_fuente = Barra Then Barra_Click(EventData())
+    If aronnax_fuente = Boton1 Then Boton1_Click()
+    If aronnax_fuente = Boton2 Then Boton2_Click()
+  EndIf
+  If aronnax_e = EVENT_WINDOWSIZE Then Aronnax_Recolocar()
+Until aronnax_e = EVENT_WINDOWCLOSE
+End
+Function Aronnax_Recolocar()
+  aronnax_dw = ClientWidth() - 560
+  aronnax_dh = ClientHeight() - 380
+  SetGadgetShape Campo1, 76, 40, 240 + aronnax_dw, 26
+  SetGadgetShape Texto1, 12, 76, 536 + aronnax_dw, 264 + aronnax_dh
+  SetGadgetShape Etiqueta2, 12, 350 + aronnax_dh, 536, 20
+End Function
+; ---- Tu codigo ----
+; Un editor de texto sencillo, hecho con Aronnax.
+;   - la caja de texto y el campo del nombre se estiran con la ventana
+;   - Abrir lee el archivo linea a linea; Guardar lo escribe con WriteLine
+;   - la barra de herramientas: Nuevo (0), Abrir (1) y Guardar (2)
+
+Function Boton1_Click()        ; Abrir
+  n$ = GadgetText$(Campo1)
+  If FileExists(n$) = 0
+    SetGadgetText Etiqueta2, "No existe " + n$ + "."
+    Return
+  EndIf
+  SetTextAreaText Texto1, ""
+  f = OpenFile(n$)
+  lineas = 0
+  While Not Eof(f)
+    AddTextAreaText Texto1, ReadLine$(f) + Chr$(10)
+    lineas = lineas + 1
+  Wend
+  CloseFile f
+  SetGadgetText Etiqueta2, "Abierto " + n$ + " (" + Str$(lineas) + " lineas, " + Str$(FileSize(n$)) + " bytes)."
+End Function
+
+Function Boton2_Click()        ; Guardar
+  n$ = GadgetText$(Campo1)
+  If n$ = ""
+    SetGadgetText Etiqueta2, "Escribe un nombre de archivo."
+    Return
+  EndIf
+  h = WriteFile(n$)
+  If h < 0
+    SetGadgetText Etiqueta2, "No se pudo escribir " + n$ + "."
+    Return
+  EndIf
+  t$ = GadgetText$(Texto1)
+  linea$ = ""
+  For i = 1 To Len(t$)
+    c$ = Mid$(t$, i, 1)
+    If c$ = Chr$(10)
+      WriteLine h, linea$
+      linea$ = ""
+    Else
+      linea$ = linea$ + c$
+    EndIf
+  Next
+  If linea$ <> "" Then WriteLine h, linea$
+  CloseFile h
+  SetGadgetText Etiqueta2, "Guardado " + n$ + " (" + Str$(FileSize(n$)) + " bytes)."
+End Function
+
+Function MenuNuevo_Click()        ; menu Nuevo
+  SetTextAreaText Texto1, ""
+  SetGadgetText Etiqueta2, "Documento nuevo."
+End Function
+
+Function MenuAbrir_Click()        ; menu Abrir
+  Boton1_Click()
+End Function
+
+Function MenuGuardar_Click()        ; menu Guardar
+  Boton2_Click()
+End Function
+
+Function MenuUnacarta_Click()        ; submenu: una carta
+  SetTextAreaText Texto1, "Querido amigo:" + Chr$(10) + Chr$(10) + "  " + Chr$(10) + Chr$(10) + "Un abrazo," + Chr$(10)
+  SetGadgetText Etiqueta2, "Plantilla de carta."
+End Function
+
+Function MenuUnalista_Click()        ; submenu: una lista
+  SetTextAreaText Texto1, "- " + Chr$(10) + "- " + Chr$(10) + "- " + Chr$(10)
+  SetGadgetText Etiqueta2, "Plantilla de lista."
+End Function
+
+Function MenuSalir_Click()        ; Salir
+  End
+End Function
+
+Function MenuAcercade_Click()        ; Acerca de
+  SetGadgetText Etiqueta2, "Editor de texto, hecho con Aronnax en Nemo OS."
+End Function
+
+Function Barra_Click(boton)
+  If boton = 0 Then MenuNuevo_Click()
+  If boton = 1 Then Boton1_Click()
+  If boton = 2 Then Boton2_Click()
+End Function

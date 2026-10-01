@@ -1,0 +1,29 @@
+# config.txt -- Raspberry Pi 4, arranque bare-metal de Nemo OS
+#
+# arm_64bit=1     -> el firmware carga kernel8.img y arranca en AArch64
+# enable_uart=1    -> asegura que el UART esta activo (no en bajo consumo)
+# dtoverlay=disable-bt -> IMPORTANTE: en la Pi 4, el PL011 (UART0) esta
+#                    conectado al chip Bluetooth por defecto, no a los
+#                    pines GPIO 14/15. Esto lo desconecta del Bluetooth
+#                    y lo libera para los pines fisicos de la placa.
+# uart_2ndstage=1  -> mensajes de diagnostico del propio firmware por
+#                    UART, util para depurar ANTES de que tu kernel
+#                    reciba el control (si algo falla aqui, el problema
+#                    es de config.txt/SD, no de tu codigo)
+
+arm_64bit=1
+enable_uart=1
+dtoverlay=disable-bt
+uart_2ndstage=1
+
+# Nuevo para la Fase 2 (framebuffer): fuerza la salida HDMI
+# incluso si la deteccion automatica (EDID) falla -- en las
+# pruebas de la Fase 1 el log mostraba repetidamente
+# "HDMI0:EDID error reading EDID block 0", senal de que no habia
+# ningun monitor fisico conectado durante esas pruebas por UART.
+# Para la Fase 2 hace falta un monitor/TV real conectado por HDMI.
+hdmi_force_hotplug=1
+
+# kernel8.img es el nombre que el firmware busca automaticamente
+# cuando arm_64bit=1 -- no hace falta especificarlo si se llama asi
+kernel=kernel8.img

@@ -1,0 +1,106 @@
+; Aronnax 1
+ventana titulo="Editor de texto" x=100 y=100 ancho=560 alto=380 maximizar=1 minimizar=1 cerrar=1
+control tipo="Etiqueta" nombre="Etiqueta1" x=12 y=44 ancho=60 alto=20 texto="Archivo:"
+control tipo="Campo" nombre="Campo1" x=76 y=40 ancho=240 alto=26 texto="notas.txt" ancla="ancho"
+control tipo="Boton" nombre="Boton1" x=326 y=40 ancho=76 alto=26 texto="Abrir"
+control tipo="Boton" nombre="Boton2" x=408 y=40 ancho=76 alto=26 texto="Guardar"
+control tipo="Texto" nombre="Texto1" x=12 y=76 ancho=536 alto=264 ancla="ancho-alto"
+control tipo="Etiqueta" nombre="Etiqueta2" x=12 y=350 ancho=536 alto=20 texto="Listo." ancla="abajo"
+menu texto="Archivo"
+entrada texto="Nuevo" nombre="MenuNuevo"
+entrada texto="Abrir" nombre="MenuAbrir"
+entrada texto="Guardar" nombre="MenuGuardar"
+entrada texto="Empezar con" nombre="MenuEmpezarcon"
+subentrada texto="Una carta" nombre="MenuUnacarta"
+subentrada texto="Una lista" nombre="MenuUnalista"
+entrada texto=""
+entrada texto="Salir" nombre="MenuSalir"
+menu texto="Ayuda"
+entrada texto="Acerca de" nombre="MenuAcercade"
+barra archivo="tb_basica24.nimg" ayudas="Nuevo,Abrir,Guardar,Cortar,Copiar,Pegar,Deshacer,Ejecutar,Parar,Ayuda"
+---- codigo ----
+; Un editor de texto sencillo, hecho con Aronnax.
+;   - la caja de texto y el campo del nombre se estiran con la ventana
+;   - Abrir lee el archivo linea a linea; Guardar lo escribe con WriteLine
+;   - la barra de herramientas: Nuevo (0), Abrir (1) y Guardar (2)
+
+Function Boton1_Click()        ; Abrir
+  n$ = GadgetText$(Campo1)
+  If FileExists(n$) = 0
+    SetGadgetText Etiqueta2, "No existe " + n$ + "."
+    Return
+  EndIf
+  SetTextAreaText Texto1, ""
+  f = OpenFile(n$)
+  lineas = 0
+  While Not Eof(f)
+    AddTextAreaText Texto1, ReadLine$(f) + Chr$(10)
+    lineas = lineas + 1
+  Wend
+  CloseFile f
+  SetGadgetText Etiqueta2, "Abierto " + n$ + " (" + Str$(lineas) + " lineas, " + Str$(FileSize(n$)) + " bytes)."
+End Function
+
+Function Boton2_Click()        ; Guardar
+  n$ = GadgetText$(Campo1)
+  If n$ = ""
+    SetGadgetText Etiqueta2, "Escribe un nombre de archivo."
+    Return
+  EndIf
+  h = WriteFile(n$)
+  If h < 0
+    SetGadgetText Etiqueta2, "No se pudo escribir " + n$ + "."
+    Return
+  EndIf
+  t$ = GadgetText$(Texto1)
+  linea$ = ""
+  For i = 1 To Len(t$)
+    c$ = Mid$(t$, i, 1)
+    If c$ = Chr$(10)
+      WriteLine h, linea$
+      linea$ = ""
+    Else
+      linea$ = linea$ + c$
+    EndIf
+  Next
+  If linea$ <> "" Then WriteLine h, linea$
+  CloseFile h
+  SetGadgetText Etiqueta2, "Guardado " + n$ + " (" + Str$(FileSize(n$)) + " bytes)."
+End Function
+
+Function MenuNuevo_Click()        ; menu Nuevo
+  SetTextAreaText Texto1, ""
+  SetGadgetText Etiqueta2, "Documento nuevo."
+End Function
+
+Function MenuAbrir_Click()        ; menu Abrir
+  Boton1_Click()
+End Function
+
+Function MenuGuardar_Click()        ; menu Guardar
+  Boton2_Click()
+End Function
+
+Function MenuUnacarta_Click()        ; submenu: una carta
+  SetTextAreaText Texto1, "Querido amigo:" + Chr$(10) + Chr$(10) + "  " + Chr$(10) + Chr$(10) + "Un abrazo," + Chr$(10)
+  SetGadgetText Etiqueta2, "Plantilla de carta."
+End Function
+
+Function MenuUnalista_Click()        ; submenu: una lista
+  SetTextAreaText Texto1, "- " + Chr$(10) + "- " + Chr$(10) + "- " + Chr$(10)
+  SetGadgetText Etiqueta2, "Plantilla de lista."
+End Function
+
+Function MenuSalir_Click()        ; Salir
+  End
+End Function
+
+Function MenuAcercade_Click()        ; Acerca de
+  SetGadgetText Etiqueta2, "Editor de texto, hecho con Aronnax en Nemo OS."
+End Function
+
+Function Barra_Click(boton)
+  If boton = 0 Then MenuNuevo_Click()
+  If boton = 1 Then Boton1_Click()
+  If boton = 2 Then Boton2_Click()
+End Function
