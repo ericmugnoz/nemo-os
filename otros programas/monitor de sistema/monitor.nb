@@ -1,0 +1,263 @@
+; monitor.nb -- que equipo es este, y en que se le esta yendo la memoria,
+; el disco y los turnos de procesador. La version en Nemo Basic del
+; monitor del sistema.
+;
+; Se dibuja a mano sobre un lienzo, igual que la version en Lua, por la
+; misma razon: las barras de ocupacion dicen de un vistazo lo que una
+; cifra tarda en decir.
+;
+; Dos diferencias con la version en Lua, a proposito:
+;   - La ventana no cambia de tamaño. Lua puede recolocar su dibujo al
+;     vuelo; aqui el lienzo se crea una vez con su medida.
+;   - Se dibuja con la fuente del sistema, sin elegir tipo ni tamaño.
+;
+; Los datos salen de los comandos de sistema del lenguaje (CpuName$,
+; TotalRam, DiskUsedBlocks, TaskTurns...). Estan en la referencia, y cada
+; uno es una syscall del kernel.
+
+Const ANCHO = 560
+Const ALTO  = 620
+
+Const COL_VALOR = 196     ; donde empieza la columna de valores
+Const COL_PCT   = ANCHO - 52
+Const MARGEN    = 16
+Const LINEA     = 19      ; alto de una fila de texto
+
+Global y = 0              ; el cursor vertical del dibujado
+Global lienzo = 0
+
+; ---------------------------------------------------------------
+; Formato
+; ---------------------------------------------------------------
+; Un numero con parte decimal, sin coma flotante: se parte entre la
+; unidad y se saca el resto a mano. Con coma decimal, que es como se
+; escribe aqui: "8,00 GB", no "8.00 GB".
+Function Trozo$(n, unidad, cifras)
+  Local ent, resto, d
+  ent = n / unidad
+  resto = n Mod unidad
+  If cifras = 1 Then
+    d = (resto * 10) / unidad
+    Return Str$(ent) + "," + Str$(d)
+  EndIf
+  d = (resto * 100) / unidad
+  If d < 10 Then Return Str$(ent) + ",0" + Str$(d)
+  Return Str$(ent) + "," + Str$(d)
+End Function
+
+Function Bytes$(n)
+  If n >= 1073741824 Then Return Trozo$(n, 1073741824, 2) + " GB"
+  If n >= 1048576 Then Return Trozo$(n, 1048576, 1) + " MB"
+  If n >= 1024 Then Return Trozo$(n, 1024, 1) + " KB"
+  Return Str$(n) + " B"
+End Function
+
+Function Dos$(v)
+  If v < 10 Then Return "0" + Str$(v)
+  Return Str$(v)
+End Function
+
+Function Rato$(seg)
+  Local d, h, m, s
+  d = seg / 86400
+  h = (seg Mod 86400) / 3600
+  m = (seg Mod 3600) / 60
+  s = seg Mod 60
+  If d > 0 Then Return Str$(d) + " d " + Str$(h) + " h " + Str$(m) + " min"
+  If h > 0 Then Return Str$(h) + " h " + Str$(m) + " min"
+  If m > 0 Then Return Str$(m) + " min " + Str$(s) + " s"
+  Return Str$(s) + " s"
+End Function
+
+; ---------------------------------------------------------------
+; Piezas de dibujo
+; ---------------------------------------------------------------
+Function Titulo(texto$)
+  y = y + 6
+  Color 32, 48, 96
+  Text MARGEN, y, texto$
+  y = y + 18
+  Color 160, 160, 160
+  Rect MARGEN, y, ANCHO - MARGEN * 2, 1
+  y = y + 7
+  Return 0
+End Function
+
+Function Dato(etiqueta$, valor$)
+  Color 96, 96, 112
+  Text MARGEN + 4, y, etiqueta$
+  Color 28, 28, 32
+  Text COL_VALOR, y, valor$
+  y = y + LINEA
+  Return 0
+End Function
+
+; Una barra de ocupacion con su texto encima. 'usado' y 'total' en la
+; misma unidad, sea la que sea. El rojo del 90% en adelante es lo unico
+; que cambia de color: un aviso que se ve sin leer la cifra.
+Function Barra(etiqueta$, usado, total, r, g, b)
+  Local pct, ancho_barra, lleno
+  If total > 0 Then
+    pct = (usado * 100) / total
+  Else
+    pct = 0
+  EndIf
+
+  Color 96, 96, 112
+  Text MARGEN + 4, y, etiqueta$
+  Color 28, 28, 32
+  Text COL_VALOR, y, Bytes$(usado) + " de " + Bytes$(total)
+  If pct >= 90 Then
+    Color 204, 51, 51
+  Else
+    Color 96, 96, 112
+  EndIf
+  Text COL_PCT, y, Str$(pct) + "%"
+  y = y + 18
+
+  ancho_barra = ANCHO - MARGEN * 2 - 8
+  Color 188, 184, 176
+  Rect MARGEN + 4, y, ancho_barra, 9
+  lleno = (ancho_barra * pct) / 100
+  If lleno > ancho_barra Then lleno = ancho_barra
+  If lleno > 0 Then
+    If pct >= 90 Then
+      Color 204, 51, 51
+    Else
+      Color r, g, b
+    EndIf
+    Rect MARGEN + 4, y, lleno, 9
+  EndIf
+  y = y + 16
+  Return 0
+End Function
+
+; ---------------------------------------------------------------
+; Las cuatro secciones
+; ---------------------------------------------------------------
+Function PintarEquipo()
+  Titulo("Equipo")
+  Dato("Procesador", CpuName$())
+  Dato("Nucleos", Str$(CpuCores()) + " en marcha")
+  ; 0 MHz no significa "parado": significa que no hay a quien
+  ; preguntarselo. En QEMU no existe el mailbox del firmware.
+  If CpuMHz() > 0 Then
+    Dato("Frecuencia", Str$(CpuMHz()) + " MHz")
+  Else
+    Dato("Frecuencia", "desconocida")
+  EndIf
+  Dato("RAM fisica", Bytes$(TotalRam()))
+  Dato("Pantalla", Str$(ScreenWidth()) + " x " + Str$(ScreenHeight()))
+  Dato("Encendido", Rato$(MilliSecs() / 1000))
+  Dato("Fecha y hora", Dos$(Day()) + "/" + Dos$(Month()) + "/" + Str$(Year()) + "  " + Dos$(Hour()) + ":" + Dos$(Minute()) + ":" + Dos$(Second()))
+  Return 0
+End Function
+
+Function PintarMemoria()
+  Local resto
+  Titulo("Memoria")
+  Barra("Tareas", TaskRamUsed(), TaskRamTotal(), 58, 110, 165)
+  Barra("Monton del nucleo", KernelHeapUsed(), KernelHeapTotal(), 58, 110, 165)
+  Dato("Nucleo en RAM", Bytes$(KernelRam()))
+  ; Lo que queda es RAM que existe y que el sistema todavia no reparte a
+  ; nadie. Se dice asi, y no "libre", porque no hay un asignador general
+  ; que la vaya a usar: hoy sobra, sin mas.
+  resto = TotalRam() - KernelRam() - TaskRamTotal()
+  If resto < 0 Then resto = 0
+  Dato("Sin repartir", Bytes$(resto))
+  Return 0
+End Function
+
+Function PintarDisco()
+  Local usado, total, resumen$, i
+  Titulo("Disco")
+  usado = DiskUsedBlocks() * 512
+  total = DiskTotalBlocks() * 512
+  Barra("NemoFS (C:)", usado, total, 46, 139, 87)
+  Dato("Libre", Bytes$(total - usado))
+  Dato("Tarjeta", Bytes$(CardSectors() * 512))
+  resumen$ = ""
+  For i = 0 To 3
+    If PartitionSectors(i) > 0 Then
+      If resumen$ <> "" Then resumen$ = resumen$ + "   "
+      resumen$ = resumen$ + Str$(i + 1) + ": " + Bytes$(PartitionSectors(i) * 512)
+    EndIf
+  Next
+  If resumen$ = "" Then resumen$ = "sin tabla utilizable"
+  Dato("Particiones", resumen$)
+  Return 0
+End Function
+
+Function PintarTareas()
+  Local vivas, suma, ancho_barra, lleno, pct, i
+  vivas = TaskCount()
+  Titulo("Tareas (" + Str$(vivas) + " de " + Str$(TaskSlots()) + " huecos)")
+
+  Color 96, 96, 112
+  Text MARGEN + 4, y, "El reparto es de TURNOS del planificador, no de procesador: una"
+  y = y + 14
+  Text MARGEN + 4, y, "tarea que solo espera acumula turnos igual que una que trabaja."
+  y = y + 18
+
+  ; La suma primero: sin ella no hay porcentaje que repartir.
+  suma = 0
+  For i = 0 To vivas - 1
+    suma = suma + TaskTurns(i)
+  Next
+
+  ancho_barra = COL_PCT - COL_VALOR - 8
+  For i = 0 To vivas - 1
+    ; El aviso de que faltan tareas necesita su propia linea entera: si no,
+    ; queda cortado por abajo justo cuando hace falta leerlo.
+    If y > ALTO - 34 Then
+      Color 96, 96, 112
+      Text MARGEN + 4, y, "(hay mas tareas de las que caben en la ventana)"
+      Return 0
+    EndIf
+    If suma > 0 Then
+      pct = (TaskTurns(i) * 100) / suma
+    Else
+      pct = 0
+    EndIf
+    Color 28, 28, 32
+    Text MARGEN + 4, y, "[" + Str$(TaskSlot(i)) + "] " + TaskName$(i)
+    Color 188, 184, 176
+    Rect COL_VALOR, y + 4, ancho_barra, 8
+    lleno = (ancho_barra * pct) / 100
+    If lleno > 0 Then
+      Color 192, 128, 64
+      Rect COL_VALOR, y + 4, lleno, 8
+    EndIf
+    Color 96, 96, 112
+    Text COL_PCT, y, Str$(pct) + "%"
+    y = y + 18
+  Next
+  Return 0
+End Function
+
+Function Pintar()
+  SetBuffer CanvasBuffer(lienzo)
+  ClsColor 212, 208, 200
+  Cls
+  y = 4
+  PintarEquipo()
+  PintarMemoria()
+  PintarDisco()
+  PintarTareas()
+  SetBuffer BackBuffer()
+  Return 0
+End Function
+
+; ---------------------------------------------------------------
+; La ventana
+; ---------------------------------------------------------------
+CreateWindow "Monitor del sistema", 130, 90, ANCHO, ALTO
+lienzo = CreateCanvas(0, 0, ANCHO, ALTO)
+
+reloj = CreateTimer(1)      ; una vez por segundo
+Pintar()
+
+Repeat
+  e = WaitEvent()
+  If e = EVENT_TIMERTICK Then Pintar()
+Until e = EVENT_WINDOWCLOSE

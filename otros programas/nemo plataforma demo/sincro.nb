@@ -1,0 +1,80 @@
+; sincro.nb - ritmo de fotogramas explicito.
+; Para incluir con:  Include "sincro.nb"
+;
+;   FijaFps(f)      dice a cuantos fotogramas por segundo quieres ir
+;   Sincroniza()    espera lo que falte y devuelve los MICROSEGUNDOS
+;                   que duro el fotograma anterior
+;   sin_retraso     queda a 1 si el fotograma no llego a tiempo
+;
+; POR QUE HACE FALTA: el planificador de Nemo OS late 100 veces por
+; segundo, y tanto Pump como Delay despiertan en un latido. Un bucle con
+; un Pump va a 100 fps; si el dibujado se pasa de 10 ms, cae de golpe a
+; 50; si se pasa de 20, a 33. No hay nada entre medias, y hasta ahora eso
+; se descubria mirando el contador, no se decidia.
+;
+; EL LIMITE, dicho claro: solo se pueden pedir ritmos que dividan a 100.
+; 100, 50, 25 y 20 son exactos; 33 sale 33,3. **60 fps no es posible**
+; sin subir la frecuencia del reloj del sistema, que hoy es de 100 Hz.
+; Lo que SI se puede ya es no ir a la deriva y saber cuanto se tarda.
+;
+; La medida sale de MicroSecs(), el contador generico de ARM, no del
+; reloj del planificador: MilliSecs() solo da saltos de 10 ms y con el
+; no se puede medir un fotograma.
+
+; El estado del ritmo, declarado: vive entre una llamada y la siguiente.
+Global sin_paso
+Global sin_anterior
+Global sin_proximo
+Global sin_retraso
+
+Function FijaFps(fj_f)
+  If fj_f < 1
+    fj_f = 1
+  EndIf
+  sin_paso = 1000000 / fj_f
+  sin_anterior = MicroSecs()
+  sin_proximo = sin_anterior + sin_paso
+  sin_retraso = 0
+  Return sin_paso
+End Function
+
+Function Sincroniza()
+  ; SIEMPRE se cede al menos una vez: el planificador es cooperativo y
+  ; un fotograma que llegue tarde no puede ademas robarle el turno a
+  ; todo lo demas.
+  Pump
+
+  sn_ahora = MicroSecs()
+  sin_retraso = 0
+  If sn_ahora > sin_proximo
+    sin_retraso = 1
+  EndIf
+
+  While sn_ahora < sin_proximo
+    sn_falta = sin_proximo - sn_ahora
+    If sn_falta > 20000
+      ; mas de dos latidos por delante: dormir de verdad, dejando un
+      ; margen de 10 ms para no pasarse.
+      ; (En dos lineas a proposito: "Delay (x) - 10" no se analiza bien,
+      ; el parentesis se toma por el argumento entero.)
+      sn_ms = (sn_falta / 1000) - 10
+      Delay sn_ms
+    Else
+      Pump
+    EndIf
+    sn_ahora = MicroSecs()
+  Wend
+
+  sn_delta = sn_ahora - sin_anterior
+  sin_anterior = sn_ahora
+  sin_proximo = sin_proximo + sin_paso
+
+  ; Si se va MUY retrasado, no se intenta recuperar el tiempo perdido
+  ; corriendo mas: se vuelve a partir de ahora. Recuperar produciria una
+  ; ristra de fotogramas sin espera, y el juego pegaria un aceleron.
+  If sin_proximo < sn_ahora
+    sin_proximo = sn_ahora + sin_paso
+  EndIf
+
+  Return sn_delta
+End Function

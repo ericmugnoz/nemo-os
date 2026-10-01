@@ -1,0 +1,52 @@
+; sprites.nb -- imagenes: cargar, transparencia, punto de agarre
+;
+; Necesita un archivo de imagen en la raiz. Si no lo encuentra,
+; dibuja un cuadrado en su lugar -- asi el programa sirve igual
+; para probar que LoadImage devuelve -1 correctamente.
+
+Graphics 400, 300
+
+nave = LoadImage("nave.nimg")
+
+If nave >= 0 Then
+  ; el magenta pasa a transparente, como es costumbre en sprites
+  x = MaskImage(nave, 0xFF00FF)
+  ; el punto de agarre al centro: asi DrawImage centra la imagen
+  ; en las coordenadas, en vez de poner ahi su esquina
+  x = HandleImage(nave, ImageWidth(nave) / 2, ImageHeight(nave) / 2)
+EndIf
+
+px = 200
+py = 150
+x = Seed(MilliSecs())
+
+While Not KeyDown(1) And Not KeyDown(57)
+
+  Cls
+
+  If KeyDown(105) Then px = px - 4
+  If KeyDown(106) Then px = px + 4
+  If KeyDown(103) Then py = py - 4
+  If KeyDown(108) Then py = py + 4
+  If px < 20 Then px = 20
+  If px > 380 Then px = 380
+  If py < 20 Then py = 20
+  If py > 280 Then py = 280
+
+  If nave >= 0 Then
+    x = DrawImage(nave, px, py)
+  Else
+    ; sin imagen: un cuadrado para que se vea igual
+    Color 0, 200, 255
+    Rect px - 12, py - 12, 24, 24
+    Color 255, 255, 255
+    Text 8, 8, "No se encontro nave.nimg"
+  EndIf
+
+  Color 255, 255, 255
+  Text 8, 280, "Flechas para mover, Espacio para salir"
+
+  d = Pump()
+Wend
+
+If nave >= 0 Then x = FreeImage(nave)

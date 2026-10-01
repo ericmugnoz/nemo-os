@@ -1,0 +1,102 @@
+; ---------------------------------------------------------------
+; SENSOR.NB -- lee entradas del GPIO y se las cuenta a un servidor de la
+; red por HTTP.
+;
+; Es el ejemplo de lo que la red sirve para hacer: la Raspberry Pi
+; vigilando algo --una puerta, un pulsador, un detector de movimiento-- y
+; avisando a otro ordenador.
+;
+; AL OTRO LADO hace falta algo que recoja los POST. Con Python, en el Mac,
+; esto basta (guardarlo como recoge.py y ejecutarlo con python3):
+;
+;   from http.server import BaseHTTPRequestHandler, HTTPServer
+;   class R(BaseHTTPRequestHandler):
+;       def do_POST(self):
+;           n = int(self.headers.get('Content-Length', 0))
+;           print(self.path, self.rfile.read(n).decode())
+;           self.send_response(200)
+;           self.send_header('Content-Length', '2')
+;           self.end_headers()
+;           self.wfile.write(b'ok')
+;   HTTPServer(('0.0.0.0', 8099), R).serve_forever()
+;
+; Y despues, aqui, poner en SERVIDOR$ la IP del Mac (ifconfig la dice).
+; ---------------------------------------------------------------
+
+Include "red.nb"
+
+Global SERVIDOR$, PUERTO, PINES
+SERVIDOR$ = "192.168.1.40"      ; la IP del ordenador que recoge
+PUERTO = 8099
+PINES = 3                        ; se vigilan los pines de PIN(0) a PIN(2)
+
+Dim pin(2)
+Dim nombre$(2)
+Dim antes(2)
+
+pin(0) = 4  : nombre$(0) = "puerta"
+pin(1) = 17 : nombre$(1) = "ventana"
+pin(2) = 27 : nombre$(2) = "pulsador"
+
+Global v, i, r, cuerpo$, cambios
+
+; ---------------------------------------------------------------
+; Preparar
+; ---------------------------------------------------------------
+Print "Sensor de red -- manda a " + SERVIDOR$ + ":" + Str$(PUERTO)
+Print ""
+
+For i = 0 To PINES - 1
+  GpioMode pin(i), 0            ; 0 = entrada
+  ; El primer valor NO se manda: es el estado de partida, no un cambio.
+  ; Mandarlo dejaria un aviso falso en el servidor cada vez que arranca
+  ; el programa.
+  antes(i) = GpioRead(pin(i))
+  Print nombre$(i) + " (pin " + Str$(pin(i)) + ") empieza en " + Str$(antes(i))
+Next
+Print ""
+
+; Un aviso de que arrancamos, para que se vea en el servidor que la
+; maquina esta viva aunque no pase nada durante horas.
+r = RedMandar(SERVIDOR$, PUERTO, "/arranque", "sensor en marcha")
+Print "arranque: " + RedMotivo$(r)
+Print ""
+
+; ---------------------------------------------------------------
+; El bucle
+;
+; Se manda SOLO CUANDO ALGO CAMBIA. Mandar la lectura cada vuelta seria
+; diez peticiones por segundo de las cuales nueve dicen lo mismo, y con
+; UNA sola peticion HTTP a la vez en todo el sistema (debajo hay un solo
+; cliente TCP) eso significa que la siguiente no puede ni empezar.
+; ---------------------------------------------------------------
+While 1
+  cambios = 0
+  cuerpo$ = ""
+
+  For i = 0 To PINES - 1
+    v = GpioRead(pin(i))
+    ; GpioRead devuelve negativo si el pin no vale. Compararlo con antes()
+    ; sin mirar eso daria un "cambio" en cada vuelta.
+    If v >= 0 And v <> antes(i) Then
+      antes(i) = v
+      If cambios > 0 Then cuerpo$ = cuerpo$ + "&"
+      cuerpo$ = cuerpo$ + nombre$(i) + "=" + Str$(v)
+      cambios = cambios + 1
+    EndIf
+  Next
+
+  If cambios > 0 Then
+    Print "cambio: " + cuerpo$
+    r = RedMandar(SERVIDOR$, PUERTO, "/sensor", cuerpo$)
+    If r >= 200 And r < 300 Then
+      Print "   servidor: " + HttpBody$()
+    Else
+      Print "   " + RedMotivo$(r)
+    EndIf
+  EndIf
+
+  ; 100 ms. Un pulsador se aprieta en 50-200 ms, asi que esto lo coge; y
+  ; deja el resto del tiempo para que el sistema haga lo suyo.
+  Delay 10
+Wend

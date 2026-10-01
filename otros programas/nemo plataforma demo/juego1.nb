@@ -1,0 +1,765 @@
+; juego1.nb - el capitan Nemo se mueve por el nivel.
+; Flechas para correr, Espacio o Arriba para saltar, Esc para salir.
+;
+; Junta las tres piezas: la banda deslizante de fondos pre-compuestos,
+; la fisica con acumulador de subpixeles, y colision.nb.
+
+Include "colision.nb"
+Include "sincro.nb"
+Include "teclado.nb"
+
+Graphics 640, 480
+
+TILE = 16
+MAPA_W = 128
+MAPA_H = 30
+COL_W = 16
+COL_H = 15
+NCOL = 4
+COLS_MUNDO = 8
+SCROLL_MAX = 1408
+
+Global COL_W
+Global COL_H
+Global hoja
+
+; Montaje REPARTIDO de una columna (ver MontarFila). Montar las dos
+; mitades de golpe son 480 DrawBlock en un solo fotograma: en la Pi 4
+; eso se pasa de los 10 ms del latido y el fotograma cae al siguiente
+; -- un tiron de 20 ms cada vez que el scroll cruza un borde de 256.
+; Repartido en filas no se nota, y da tiempo de sobra: cuando una
+; columna empieza a montarse aun le quedan unos 128 px de scroll (medio
+; centenar de fotogramas) para asomar por el borde de la pantalla.
+Global mont_activo
+Global mont_col
+Global mont_hueco
+Global mont_fila
+FILAS_POR_FOTOGRAMA = 2
+
+Dim mapa(127, 29)
+Dim trozo(3, 1)
+
+; Cangrejos y monedas. Arrays sueltos en vez de Type: para unas pocas
+; decenas de cosas es mas simple, y los arrays no tienen que reservar ni
+; liberar nada mientras se juega.
+MAX_BICHOS = 24
+MAX_MONEDAS = 64
+Dim bx(23)
+Dim by(23)
+Dim bvx(23)
+Dim bvivo(23)
+Dim btipo(23)
+Dim bnace(23)      ; la altura de partida: el murcielago ondea sobre ella
+Dim bnacex(23)     ; y la x de partida: patrulla alrededor, no se va del nivel
+RADIO_VUELO = 56
+Dim mx(63)
+Dim my(63)
+Dim mviva(63)
+meta_x = 0
+meta_y = 0
+ganado = 0
+Global nbichos
+Global nmonedas
+Global puntos
+Global vidas
+Global ganado
+nbichos = 0
+nmonedas = 0
+puntos = 0
+vidas = 3
+INVULNERABLE = 120      ; fotogramas de respiro tras un golpe
+invul = 0
+
+hoja = LoadAnimImage("tiles.nimg", 16, 16, 0, 32)
+If hoja = -1
+  Color 0xFF4040
+  Text 10, 10, "No encuentro tiles.nimg"
+  Delay 4000
+  End
+EndIf
+
+; El capitan: 20 celdas de 32x32 en una sola hoja. 0-9 mirando a la
+; derecha, 10-19 los mismos del reves -- el kernel no sabe dibujar una
+; imagen espejada, asi que el espejo viene hecho desde el conversor y
+; cambiar de lado es sumar 10 al numero de fotograma.
+;   0-3 quieto | 4-7 andando | 8 saltando | 9 golpeando
+nemo = LoadAnimImage("nemo.nimg", 32, 32, 0, 20)
+If nemo = -1
+  Color 0xFF4040
+  Text 10, 30, "No encuentro nemo.nimg"
+  Delay 4000
+  End
+EndIf
+; El magenta del fondo pasa a ser transparente. Es color CLAVE: se compara
+; el color exacto en cada dibujado, la imagen no se toca.
+MaskImage nemo, 0xFF00FF
+HandleImage nemo, 0, 0
+
+; Cangrejo y moneda, celdas de 16x16 (un tile):
+;   0-3 cangrejo | 4-7 moneda | 8-11 murcielago
+;   12-23, los mismos espejados (sumar 12 para mirar a la izquierda)
+bichos = LoadAnimImage("bichos.nimg", 16, 16, 0, 24)
+If bichos = -1
+  Color 0xFF4040
+  Text 10, 50, "No encuentro bichos.nimg"
+  Delay 4000
+  End
+EndIf
+MaskImage bichos, 0xFF00FF
+HandleImage bichos, 0, 0
+
+Cls
+Color 0xFFFFFF
+Text 10, 10, "Cargando nivel..."
+Pump
+
+fh = OpenFile("nivel.txt")
+If fh = -1
+  Color 0xFF4040
+  Text 10, 30, "No encuentro nivel.txt"
+  Delay 4000
+  End
+EndIf
+fila = 0
+While Eof(fh) = 0
+  linea$ = ReadLine$(fh)
+  If Len(linea$) > 0
+    If fila < MAPA_H
+      For x = 0 To MAPA_W - 1
+        c = 0
+        If x < Len(linea$)
+          c = Asc(Mid$(linea$, x + 1, 1))
+        EndIf
+        mapa(x, fila) = TileDe(c)
+        ; 'C' y 'M' no son tiles: marcan DONDE nace un cangrejo o una
+        ; moneda. En el mapa quedan como cielo.
+        If c = 67
+          If nbichos < MAX_BICHOS
+            bx(nbichos) = x * TILE
+            by(nbichos) = fila * TILE + 4
+            bvx(nbichos) = 1
+            bvivo(nbichos) = 1
+            btipo(nbichos) = 0
+            bnace(nbichos) = fila * TILE + 4
+            nbichos = nbichos + 1
+          EndIf
+        EndIf
+        If c = 66
+          If nbichos < MAX_BICHOS
+            bx(nbichos) = x * TILE
+            by(nbichos) = fila * TILE
+            bvx(nbichos) = 1
+            bvivo(nbichos) = 1
+            btipo(nbichos) = 1
+            bnace(nbichos) = fila * TILE
+            bnacex(nbichos) = x * TILE
+            nbichos = nbichos + 1
+          EndIf
+        EndIf
+        If c = 70
+          meta_x = x * TILE
+          meta_y = fila * TILE
+        EndIf
+        If c = 77
+          If nmonedas < MAX_MONEDAS
+            mx(nmonedas) = x * TILE
+            my(nmonedas) = fila * TILE
+            mviva(nmonedas) = 1
+            nmonedas = nmonedas + 1
+          EndIf
+        EndIf
+      Next
+      fila = fila + 1
+    EndIf
+  EndIf
+Wend
+CloseFile fh
+
+For h = 0 To NCOL - 1
+  For v = 0 To 1
+    img = CreateImage(256, 240)
+    HandleImage img, 0, 0
+    trozo(h, v) = img
+  Next
+Next
+
+colBase = 0
+mont_activo = 0
+mont_col = 0
+mont_hueco = 0
+mont_fila = 0
+; Las cuatro primeras van enteras: es la carga del nivel, no un fotograma.
+For c = 0 To NCOL - 1
+  d = MontarColumna(c, c)
+Next
+
+; ---------------------------------------------------------------
+; El capitan. Posicion en pixeles; la velocidad en DIECISEISAVOS de
+; pixel, con un acumulador, porque a 100 fotogramas por segundo un
+; pixel entero por fotograma ya son 100 px/s y la gravedad no se
+; puede ajustar con numeros enteros tan gruesos.
+; ---------------------------------------------------------------
+NEMO_W = 14         ; la caja que choca es mas estrecha que el dibujo:
+NEMO_H = 32         ; es lo normal, evita engancharse por un pelo
+SPRITE_W = 32
+px = 32
+py = 100
+vx = 0
+vy = 0
+acx = 0
+acy = 0
+GRAVEDAD = 2        ; 1/8 de pixel por fotograma, al cuadrado
+VY_MAX = 96         ; 6 px por fotograma cayendo
+VELOCIDAD = 40      ; 2,5 px por fotograma corriendo
+IMPULSO = 56        ; 3,5 px por fotograma al saltar -> unos 3 tiles
+
+scroll = 0
+fps = 0
+fotos = 0
+tfps = MilliSecs()
+salir = 0
+suelo = 0
+mirando = 0         ; 0 derecha, 10 izquierda: lo que se suma al fotograma
+paso = 0            ; cuenta de fotogramas para la animacion
+cuadro = 0
+delta = 0
+peor = 0
+peor_log = 0
+peor_mon = 0
+peor_dib = 0
+peor_txt = 0
+t4 = 0
+t1 = 0
+t2 = 0
+t3 = 0
+
+; Ritmo explicito. A 100 fps hay un solo latido por fotograma: si el
+; dibujado se pasa de 10 ms, se cae a 50 de golpe. Los numeros de la
+; fisica de abajo estan ajustados a ESTE paso -- al cambiarlo hay que
+; tocarlos: la velocidad escala con el tiempo de fotograma y la
+; gravedad con su cuadrado (a 50 fps: velocidad x2, gravedad x4).
+d = FijaFps(100)
+
+While salir = 0
+  ; -- entrada: dos llamadas al sistema para TODO el teclado --
+  t = LeeTeclado()
+  vx = 0
+  If Pulsada(105) = 1
+    vx = -VELOCIDAD
+    mirando = 10
+  EndIf
+  If Pulsada(106) = 1
+    vx = VELOCIDAD
+    mirando = 0
+  EndIf
+
+  ; El salto usa Nueva(): solo el fotograma en que se pulsa. Con
+  ; Pulsada() a secas, dejar la tecla apretada volveria a saltar en
+  ; cuanto se tocara el suelo, y el capitan iria dando botes solo.
+  suelo = EnSuelo(px, py, NEMO_W, NEMO_H)
+  If suelo = 1
+    If Nueva(57) = 1
+      vy = -IMPULSO
+    EndIf
+    If Nueva(103) = 1
+      vy = -IMPULSO
+    EndIf
+  EndIf
+
+  ; -- fisica --
+  vy = vy + GRAVEDAD
+  If vy > VY_MAX
+    vy = VY_MAX
+  EndIf
+
+  acx = acx + vx
+  dx = acx / 16
+  acx = acx - dx * 16
+  px = MueveX(px, py, NEMO_W, NEMO_H, dx)
+
+  acy = acy + vy
+  dy = acy / 16
+  acy = acy - dy * 16
+  py = MueveY(px, py, NEMO_W, NEMO_H, dy)
+  If col_toco = 1
+    vy = 0
+    acy = 0
+  EndIf
+
+  ; si se cae del nivel, vuelve al principio
+  If py > MAPA_H * TILE
+    px = 32
+    py = 100
+    vy = 0
+    acy = 0
+  EndIf
+
+  t1 = MicroSecs()
+
+  ; -- cangrejos: andan y se dan la vuelta en el borde o contra un muro --
+  mueve_bichos = paso - (paso / 2) * 2     ; 1 px cada dos fotogramas: 50 px/s
+  For i = 0 To nbichos - 1
+    If bvivo(i) = 1
+      ; OJO: la vuelta solo se decide en los fotogramas en que de verdad
+      ; se intenta andar. Si se mira "no se ha movido" tambien en los
+      ; fotogramas de descanso, se toma por un choque y el bicho cambia
+      ; de sentido en cada uno: anda un pixel, vuelve, anda, vuelve.
+      If btipo(i) = 0
+        ; -- cangrejo: anda por el suelo --
+        If mueve_bichos = 0
+          nx = MueveX(bx(i), by(i), 14, 12, bvx(i))
+          If nx = bx(i)
+            bvx(i) = -bvx(i)          ; ha chocado con algo
+          Else
+            bx(i) = nx
+            ; ¿sigue habiendo suelo delante? si no, media vuelta
+            If SueloDelante(bx(i), by(i), 14, 12, bvx(i)) = 0
+              bvx(i) = -bvx(i)
+            EndIf
+          EndIf
+        EndIf
+        ; caer, por si nacio en el aire
+        by(i) = MueveY(bx(i), by(i), 14, 12, 3)
+      Else
+        ; -- murcielago: vuela, ni gravedad ni suelo. Solo se da la
+        ; vuelta contra un muro. Ondea con un vaiven triangular: mucho
+        ; mas barato que un seno y en pantalla no se distingue.
+        If mueve_bichos = 0
+          nx = MueveX(bx(i), by(i), 14, 12, bvx(i))
+          If nx = bx(i)
+            bvx(i) = -bvx(i)          ; un muro
+          Else
+            bx(i) = nx
+            ; y un radio alrededor de donde nacio: en el aire no hay
+            ; nada que lo pare, y sin esto se va al otro extremo del
+            ; nivel y no vuelve
+            lejos = bx(i) - bnacex(i)
+            If lejos < 0
+              lejos = -lejos
+            EndIf
+            If lejos > RADIO_VUELO
+              bvx(i) = -bvx(i)
+            EndIf
+          EndIf
+        EndIf
+        vai = (paso / 4) Mod 32
+        If vai > 16
+          vai = 32 - vai
+        EndIf
+        by(i) = bnace(i) + vai - 8
+      EndIf
+    EndIf
+  Next
+
+  ; -- monedas: se cogen al tocarlas --
+  For i = 0 To nmonedas - 1
+    If mviva(i) = 1
+      If Tocan(px, py, NEMO_W, NEMO_H, mx(i), my(i), 16, 16) = 1
+        mviva(i) = 0
+        puntos = puntos + 10
+      EndIf
+    EndIf
+  Next
+
+  ; -- chocar con un cangrejo: pisarlo lo mata, tocarlo de lado cuesta --
+  For i = 0 To nbichos - 1
+    If bvivo(i) = 1
+      If Tocan(px, py, NEMO_W, NEMO_H, bx(i), by(i), 14, 12) = 1
+        If py + NEMO_H - 10 < by(i)
+          bvivo(i) = 0            ; le ha caido encima
+          puntos = puntos + 50
+          vy = -IMPULSO / 2       ; rebote
+          acy = 0
+        Else
+          ; Sin un respiro se pierden las tres vidas de golpe: se
+          ; reaparece encima del mismo cangrejo y vuelve a tocar.
+          If invul = 0
+            vidas = vidas - 1
+            invul = INVULNERABLE
+            px = 32
+            py = 100
+            vy = 0
+            acy = 0
+            acx = 0
+            If vidas <= 0
+              d = Reiniciar()
+            EndIf
+          EndIf
+        EndIf
+      EndIf
+    EndIf
+  Next
+
+  If invul > 0
+    invul = invul - 1
+  EndIf
+
+  t2 = MicroSecs()
+  If t2 - t1 > peor_log
+    peor_log = t2 - t1
+  EndIf
+
+  ; -- la meta: la escotilla del Nautilus --
+  If ganado = 0
+    If meta_x > 0
+      If Tocan(px, py, NEMO_W, NEMO_H, meta_x, meta_y - 32, 16, 48) = 1
+        ganado = 1
+      EndIf
+    EndIf
+  EndIf
+
+  ; -- camara --
+  scroll = px - 300
+  If scroll < 0
+    scroll = 0
+  EndIf
+  If scroll > SCROLL_MAX
+    scroll = SCROLL_MAX
+  EndIf
+
+  ; -- banda deslizante, ahora en los DOS sentidos --
+  deseada = scroll / 256
+  If deseada > COLS_MUNDO - NCOL
+    deseada = COLS_MUNDO - NCOL
+  EndIf
+  If deseada < 0
+    deseada = 0
+  EndIf
+  ; Un salto de camara de MAS de una columna solo pasa al reaparecer: la
+  ; cuenta de EmpiezaColumna terminaria la pendiente una vez por columna
+  ; saltada, y eso son varios montajes enteros en el mismo fotograma --
+  ; 8,5 ms medidos en la Pi 4. Cuando salta, se rehace la banda entera de
+  ; una vez, como al cargar: es un momento en el que ya hay una pausa.
+  salto = deseada - colBase
+  If salto < 0
+    salto = -salto
+  EndIf
+  If salto > 1
+    colBase = deseada
+    mont_activo = 0
+    For cc = 0 To NCOL - 1
+      cm = colBase + cc
+      If cm < COLS_MUNDO
+        d = MontarColumna(cm, cm Mod NCOL)
+      EndIf
+    Next
+  EndIf
+
+  While colBase < deseada
+    nueva = colBase + NCOL
+    If nueva < COLS_MUNDO
+      d = EmpiezaColumna(nueva, nueva Mod NCOL)
+    EndIf
+    colBase = colBase + 1
+  Wend
+  While colBase > deseada
+    nueva = colBase - 1
+    d = EmpiezaColumna(nueva, nueva Mod NCOL)
+    colBase = colBase - 1
+  Wend
+
+  ; Un poco del montaje pendiente, si lo hay
+  If mont_activo = 1
+    For r = 1 To FILAS_POR_FOTOGRAMA
+      If mont_fila < MAPA_H
+        d = MontarFila(mont_col, mont_hueco, mont_fila)
+        mont_fila = mont_fila + 1
+      EndIf
+    Next
+    If mont_fila >= MAPA_H
+      mont_activo = 0
+    EndIf
+  EndIf
+
+  t3 = MicroSecs()
+  If t3 - t2 > peor_mon
+    peor_mon = t3 - t2
+  EndIf
+
+  ; -- dibujar --
+  For cc = 0 To NCOL - 1
+    cm = colBase + cc
+    If cm < COLS_MUNDO
+      sx = cm * 256 - scroll
+      DrawBlock trozo(cm Mod NCOL, 0), sx, 0
+      DrawBlock trozo(cm Mod NCOL, 1), sx, 240
+    EndIf
+  Next
+
+  ; -- monedas y cangrejos, solo los que se ven --
+  For i = 0 To nmonedas - 1
+    If mviva(i) = 1
+      sx = mx(i) - scroll
+      If sx > -16
+        If sx < 640
+          DrawImage bichos, sx, my(i), 4 + ((paso / 10) Mod 4)
+        EndIf
+      EndIf
+    EndIf
+  Next
+  For i = 0 To nbichos - 1
+    If bvivo(i) = 1
+      sx = bx(i) - scroll
+      If sx > -16
+        If sx < 640
+          ; La hoja: 0-3 cangrejo, 4-7 moneda, 8-11 murcielago, y del 12
+          ; al 23 los mismos espejados. Mirar a la izquierda es sumar 12,
+          ; NO 8 -- con 8 se salta del cangrejo al murcielago.
+          bc = (paso / 12) Mod 4
+          If btipo(i) = 1
+            bc = 8 + ((paso / 6) Mod 4)
+          EndIf
+          If bvx(i) < 0
+            bc = bc + 12
+          EndIf
+          DrawImage bichos, sx - 1, by(i) - 4, bc
+        EndIf
+      EndIf
+    EndIf
+  Next
+
+  ; -- la meta --
+  If meta_x > 0
+    sx = meta_x - scroll
+    If sx > -16
+      If sx < 640
+        DrawImage hoja, sx, meta_y - 32, 15
+        DrawImage hoja, sx, meta_y - 16, 15
+        DrawImage hoja, sx, meta_y, 15
+      EndIf
+    EndIf
+  EndIf
+
+  ; -- el capitan --
+  ; Que fotograma toca. En el aire manda el salto; corriendo, el ciclo de
+  ; cuatro; parado, el de estar quieto, mucho mas lento.
+  paso = paso + 1
+  If suelo = 0
+    cuadro = 8
+  Else
+    If vx = 0
+      cuadro = (paso / 25) Mod 4
+    Else
+      cuadro = 4 + ((paso / 8) Mod 4)
+    EndIf
+  EndIf
+  ; El dibujo es mas ancho que la caja: se centra sobre ella.
+  DrawImage nemo, px - scroll - (SPRITE_W - NEMO_W) / 2, py, cuadro + mirando
+
+  t4 = MicroSecs()
+  If t4 - t3 > peor_dib
+    peor_dib = t4 - t3
+  EndIf
+
+  Color 0x101820
+  Rect 0, 0, 440, 46
+  Color 0x40E0D0
+  Text 6, 5, Str$(puntos) + " pts  vidas " + Str$(vidas) + "  " + Str$(fps) + " fps  peor " + Str$(peor)
+  If ganado = 1
+    Color 0x101820
+    Rect 170, 200, 300, 60
+    Color 0x40E0D0
+    Text 200, 214, "NIVEL COMPLETADO"
+    Color 0xFFFFFF
+    Text 200, 236, Str$(puntos) + " puntos -- Enter para otra"
+    If Pulsada(28) = 1
+      d = Reiniciar()
+      px = 32
+      py = 100
+      vy = 0
+      acy = 0
+      acx = 0
+      ganado = 0
+    EndIf
+  EndIf
+  Text 6, 26, "log " + Str$(peor_log) + "  mont " + Str$(peor_mon) + "  escena " + Str$(peor_dib) + "  texto " + Str$(peor_txt)
+
+  If MicroSecs() - t4 > peor_txt
+    peor_txt = MicroSecs() - t4
+  EndIf
+
+  delta = Sincroniza()
+  If delta > peor
+    peor = delta
+  EndIf
+
+  fotos = fotos + 1
+  If MilliSecs() - tfps >= 1000
+    fps = fotos
+    fotos = 0
+    tfps = MilliSecs()
+  EndIf
+
+  If Pulsada(1) = 1
+    salir = 1
+  EndIf
+Wend
+
+For h = 0 To NCOL - 1
+  For v = 0 To 1
+    FreeImage trozo(h, v)
+  Next
+Next
+FreeImage bichos
+FreeImage nemo
+FreeImage hoja
+End
+
+; ---------------------------------------------------------------
+; Apunta una columna para montarla poco a poco. Si habia otra a medias,
+; se termina AHORA: perderla dejaria media columna con los tiles de la
+; columna anterior, y eso se ve.
+; Vuelta a empezar: monedas y cangrejos otra vez en pie.
+Function Reiniciar()
+  ganado = 0
+  For ri = 0 To nmonedas - 1
+    mviva(ri) = 1
+  Next
+  For ri = 0 To nbichos - 1
+    bvivo(ri) = 1
+  Next
+  puntos = 0
+  vidas = 3
+  Return 0
+End Function
+
+Function EmpiezaColumna(ec_col, ec_hueco)
+  If mont_activo = 1
+    While mont_fila < MAPA_H
+      d2 = MontarFila(mont_col, mont_hueco, mont_fila)
+      mont_fila = mont_fila + 1
+    Wend
+  EndIf
+  mont_col = ec_col
+  mont_hueco = ec_hueco
+  mont_fila = 0
+  mont_activo = 1
+  Return 0
+End Function
+
+; Una fila de 16 tiles dentro de la columna. mf_fila va de 0 a 29: las
+; quince primeras al trozo de arriba, las otras quince al de abajo.
+Function MontarFila(mf_col, mf_hueco, mf_fila)
+  mf_v = mf_fila / COL_H
+  mf_ty = mf_fila - mf_v * COL_H
+  SetBuffer ImageBuffer(trozo(mf_hueco, mf_v))
+  For mf_tx = 0 To COL_W - 1
+    mf_mx = mf_col * COL_W + mf_tx
+    mf_t = 0
+    If mf_mx < MAPA_W
+      mf_t = mapa(mf_mx, mf_fila)
+    EndIf
+    DrawBlock hoja, mf_tx * 16, mf_ty * 16, mf_t
+  Next
+  SetBuffer BackBuffer()
+  Return 0
+End Function
+
+Function MontarColumna(mcol, mhueco)
+  For mv = 0 To 1
+    SetBuffer ImageBuffer(trozo(mhueco, mv))
+    For mty = 0 To COL_H - 1
+      mmy = mv * COL_H + mty
+      For mtx = 0 To COL_W - 1
+        mmx = mcol * COL_W + mtx
+        mt = 0
+        If mmx < MAPA_W
+          If mmy < MAPA_H
+            mt = mapa(mmx, mmy)
+          EndIf
+        EndIf
+        DrawBlock hoja, mtx * 16, mty * 16, mt
+      Next
+    Next
+  Next
+  SetBuffer BackBuffer()
+  Return 0
+End Function
+
+; ¿se solapan dos rectangulos? Nemo Basic trae RectsOverlap, pero esta
+; cabe en cuatro lineas y deja el juego sin depender de ella.
+Function Tocan(ta_x, ta_y, ta_w, ta_h, tb_x, tb_y, tb_w, tb_h)
+  If ta_x + ta_w <= tb_x
+    Return 0
+  EndIf
+  If tb_x + tb_w <= ta_x
+    Return 0
+  EndIf
+  If ta_y + ta_h <= tb_y
+    Return 0
+  EndIf
+  If tb_y + tb_h <= ta_y
+    Return 0
+  EndIf
+  Return 1
+End Function
+
+Function TileDe(cod)
+  If cod = 66
+    Return 0
+  EndIf
+  If cod = 70
+    Return 0
+  EndIf
+  If cod = 67
+    Return 0
+  EndIf
+  If cod = 77
+    Return 0
+  EndIf
+  If cod = 35
+    Return 1
+  EndIf
+  If cod = 100
+    Return 2
+  EndIf
+  If cod = 68
+    Return 3
+  EndIf
+  If cod = 114
+    Return 4
+  EndIf
+  If cod = 98
+    Return 5
+  EndIf
+  If cod = 91
+    Return 6
+  EndIf
+  If cod = 45
+    Return 7
+  EndIf
+  If cod = 93
+    Return 8
+  EndIf
+  If cod = 115
+    Return 9
+  EndIf
+  If cod = 126
+    Return 10
+  EndIf
+  If cod = 108
+    Return 11
+  EndIf
+  If cod = 99
+    Return 12
+  EndIf
+  If cod = 42
+    Return 13
+  EndIf
+  If cod = 124
+    Return 14
+  EndIf
+  If cod = 111
+    Return 15
+  EndIf
+  If cod = 60
+    Return 17
+  EndIf
+  If cod = 62
+    Return 18
+  EndIf
+  If cod = 112
+    Return 19
+  EndIf
+  Return 0
+End Function

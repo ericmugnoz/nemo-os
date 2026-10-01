@@ -1,0 +1,38 @@
+; ventana.nb -- una ventana de verdad, con botones y campo de texto
+;
+; A diferencia de los ejemplos graficos, este NO dibuja en bucle:
+; crea los controles una vez y espera a que pase algo. El kernel se
+; encarga de pintarlos y de atender los clics.
+
+CreateWindow "Nemo Basic", 120, 100, 320, 220
+
+etiqueta = CreateTextField(20, 20, 270, 24)
+x = SetGadgetText(etiqueta, "Pulsa un boton")
+
+saludar = CreateButton("Saludar", 20, 60, 120, 28)
+contar  = CreateButton("Contar", 20, 100, 120, 28)
+salir   = CreateButton("Salir", 20, 140, 120, 28)
+
+cuenta = 0
+seguir = 1
+
+While seguir = 1
+
+  e = WaitEvent()
+  quien = EventSource()
+
+  If quien = saludar Then
+    x = SetGadgetText(etiqueta, "Hola desde Nemo Basic")
+  EndIf
+
+  If quien = contar Then
+    cuenta = cuenta + 1
+    x = SetGadgetText(etiqueta, "Has pulsado " + Str$(cuenta) + " veces")
+  EndIf
+
+  If quien = salir Then seguir = 0
+
+  ; 2051 es $803: se pulso la X de cerrar la ventana
+  If e = 2051 Then seguir = 0
+
+Wend

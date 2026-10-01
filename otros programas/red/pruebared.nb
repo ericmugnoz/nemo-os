@@ -1,0 +1,241 @@
+Console
+; ---------------------------------------------------------------
+; PRUEBARED.NB -- ejercita TODOS los comandos de red desde dentro de
+; Nemo OS y dice que funciona y que no.
+;
+; Es lo primero que hay que ejecutar despues de instalar los comandos
+; nuevos: en un minuto se sabe si el camino entero --lenguaje, syscall,
+; kernel, tarjeta, cable-- esta en pie, en vez de descubrirlo a trozos
+; mientras se depura otra cosa.
+;
+; AL OTRO LADO hace falta el acompanante que corre en el Mac:
+;
+;     python3 herramientas/red_de_pruebas.py
+;
+; Levanta un servidor HTTP en el 8099 y un eco de UDP en el 7001, y va
+; escribiendo en su terminal todo lo que recibe. Asi se ve la misma
+; conversacion por los dos lados, que es lo que hace facil saber de que
+; lado esta el fallo.
+;
+; LA DIRECCION. En QEMU el Mac SIEMPRE es 10.0.2.2 desde dentro (es la
+; pasarela que pone QEMU), y ese valor ya viene puesto abajo. En la Pi
+; de verdad hay que cambiarlo por la IP del Mac, que 'ifconfig' dice.
+; ---------------------------------------------------------------
+
+Include "red.nb"
+
+Global SERVIDOR$, PUERTO_HTTP, PUERTO_ECO, MI_PUERTO
+SERVIDOR$ = "10.0.2.2"       ; en la Pi: la IP del Mac
+PUERTO_HTTP = 8099
+PUERTO_ECO = 7001            ; donde escucha el eco del Mac
+MI_PUERTO = 7000             ; donde escuchamos nosotros
+
+Global fallos, h, r, m$, i, espera, envio$
+
+Function Bien(que$, cierto)
+  If cierto
+    Print "  bien   " + que$
+  Else
+    Print "  MAL    " + que$
+    fallos = fallos + 1
+  EndIf
+End Function
+
+Function Dato(que$, valor$)
+  Print "         " + que$ + ": " + valor$
+End Function
+
+fallos = 0
+
+; ---------------------------------------------------------------
+Print "== 1. La configuracion =="
+; Si esto falla no hace falta seguir: todo lo demas fallara detras, y
+; con sintomas que no apuntan aqui.
+Bien("la red esta lista", NetReady() = 1)
+If NetReady() = 0 Then
+  Print ""
+  Print "La red no arranco. Mira el log del arranque por el puerto serie:"
+  Print "tiene que decir que hay enlace y que consiguio una IP."
+  End
+EndIf
+
+Dato("mi IP", NetIp$())
+Dato("mascara", NetMask$())
+Dato("pasarela", NetGateway$())
+Dato("DNS", NetDns$())
+
+; Una IP de verdad tiene puntos y no es 0.0.0.0. Si viniera vacia,
+; el fallo esta en ip_a_texto o en el tamano del buffer, no en la red.
+Bien("la IP no esta vacia", Len(NetIp$()) >= 7)
+Bien("y no es 0.0.0.0", NetIp$() <> "0.0.0.0")
+
+; ---------------------------------------------------------------
+Print ""
+Print "== 2. HTTP: pedir =="
+r = HttpGet(SERVIDOR$, PUERTO_HTTP, "/hola")
+Bien("HttpGet arranca", r = 1)
+If r = 1
+  espera = 0
+  While HttpState() = 1
+    Delay 1
+    espera = espera + 1
+    If espera > 3000 Then Exit          ; 30 segundos y paramos
+  Wend
+  Bien("termina", HttpState() = 2)
+  Dato("codigo", Str$(HttpCode()))
+  Dato("respuesta", HttpBody$())
+  Bien("el codigo es 200", HttpCode() = 200)
+  Bien("y trae cuerpo", Len(HttpBody$()) > 0)
+  If HttpState() = 3 Then Dato("motivo", HttpFail$())
+EndIf
+
+; ---------------------------------------------------------------
+Print ""
+Print "== 3. HTTP: mandar (POST) =="
+; Esto es lo que sirve para contarle a otro ordenador la lectura de un
+; sensor. El servidor del Mac devuelve los bytes que recibio, asi que
+; comparar es la comprobacion de que Content-Length cuadraba.
+envio$ = "temp=21.5&hum=48"
+r = HttpPost(SERVIDOR$, PUERTO_HTTP, "/sensor", envio$)
+Bien("HttpPost arranca", r = 1)
+If r = 1
+  espera = 0
+  While HttpState() = 1
+    Delay 1
+    espera = espera + 1
+    If espera > 3000 Then Exit
+  Wend
+  Bien("termina", HttpState() = 2)
+  Dato("codigo", Str$(HttpCode()))
+  Dato("respuesta", HttpBody$())
+  ; El servidor contesta con el NUMERO DE BYTES que le llegaron, y aqui
+  ; se compara con Len() del envio -- NO con un numero escrito a mano.
+  ; Lo escribi a mano la primera vez, puse 17 donde eran 16, y la prueba
+  ; habria dado un fallo mandando a buscar un problema en Content-Length
+  ; que no existia. Contar letras a ojo es otra forma de reescribir de
+  ; memoria lo que la maquina ya sabe.
+  Bien("le llegaron los bytes que dijo mandar", HttpBody$() = Str$(Len(envio$)))
+  If HttpState() = 3 Then Dato("motivo", HttpFail$())
+EndIf
+
+Print ""
+Print "== 4. HTTP: un error se cuenta como error =="
+; Una ruta que el servidor no conoce. Tiene que dar 404 y NO contar
+; como exito: un programa que toma un 404 por un envio correcto pierde
+; datos sin decir nada.
+r = HttpPost(SERVIDOR$, PUERTO_HTTP, "/no-existe", "x=1")
+If r = 1
+  espera = 0
+  While HttpState() = 1
+    Delay 1
+    espera = espera + 1
+    If espera > 3000 Then Exit
+  Wend
+  Dato("codigo", Str$(HttpCode()))
+  Bien("contesta 404", HttpCode() = 404)
+EndIf
+
+; Y una IP que no es una IP: tiene que rechazarse sin salir a la red.
+Bien("una IP imposible se rechaza", HttpGet("999.1.1.1", 80, "/") = 0)
+
+; ---------------------------------------------------------------
+Print ""
+Print "== 5. UDP: abrir =="
+h = UdpOpen(MI_PUERTO)
+Bien("se abre el socket", h >= 0)
+If h < 0
+  If h = -1 Then Print "         no quedan sockets libres"
+  If h = -2 Then Print "         ese puerto ya esta abierto"
+  If h = -3 Then Print "         ese puerto es del sistema"
+  Print ""
+  Print "Fallos: " + Str$(fallos + 1)
+  End
+EndIf
+Bien("el mismo puerto otra vez se rechaza", UdpOpen(MI_PUERTO) = -2)
+Bien("el 68 (DHCP) se rechaza", UdpOpen(68) = -3)
+
+Print ""
+Print "== 6. UDP: mandar y recibir =="
+; UdpMandarSeguro reintenta mientras salga -3, que es lo que devuelve
+; la PRIMERA vez que se le habla a una maquina nueva: falta resolver su
+; MAC por ARP. No es un error.
+envio$ = "hola desde nemo"
+r = UdpMandarSeguro(h, SERVIDOR$, PUERTO_ECO, envio$)
+Dato("bytes mandados", Str$(r))
+Bien("sale el datagrama", r = Len(envio$))
+If r < 0 And r = -3 Then
+  Print "         (-3 = no salio: no se resolvio la MAC del destino)"
+EndIf
+
+; El eco del Mac lo devuelve. Se espera hasta dos segundos.
+;
+; La espera mira UdpPending, no UdpFromPort. UdpFromPort se queda
+; enganchado en el ultimo datagrama leido, asi que a partir del segundo
+; mensaje dejaria de significar "ha llegado algo" y esta espera saldria
+; en la primera vuelta sin haber recibido nada -- comprobando nada.
+m$ = ""
+For i = 1 To 200
+  If UdpPending(h) > 0 Then Exit
+  Delay 1
+Next
+Bien("vuelve el eco", UdpPending(h) > 0)
+m$ = UdpRecv$(h)
+Dato("lo que volvio", m$)
+Dato("de quien", UdpFrom$(h) + ":" + Str$(UdpFromPort(h)))
+Bien("el eco dice lo mismo", m$ = envio$)
+; El remitente tiene que ser el servidor, no cualquier cosa. Si viniera
+; en blanco, el fallo esta en ip_a_texto o en el buffer de UdpFrom$.
+Bien("el remitente es el servidor", UdpFrom$(h) = SERVIDOR$)
+Bien("y su puerto es el del eco", UdpFromPort(h) = PUERTO_ECO)
+
+Print ""
+Print "== 7. UDP: un datagrama vacio NO es 'no hay nada' =="
+; El eco devuelve vacio si se le manda vacio. Cadena vacia con puerto
+; distinto de cero significa "llego uno sin datos"; cadena vacia con
+; puerto cero significa "no habia nada". Confundirlos hace que un
+; "estoy aqui" sin datos no se vea nunca.
+UdpMandarSeguro(h, SERVIDOR$, PUERTO_ECO, "")
+For i = 1 To 200
+  If UdpPending(h) > 0 Then Exit
+  Delay 1
+Next
+; AQUI esta el motivo de que UdpPending exista. Antes esta espera miraba
+; UdpFromPort, que ya venia distinto de cero del mensaje anterior: salia
+; en la primera vuelta y la comprobacion pasaba LLEGARA O NO el datagrama.
+; Una prueba que no prueba nada es peor que no tenerla.
+Bien("llega un datagrama vacio", UdpPending(h) > 0)
+m$ = "sin leer"
+If UdpPending(h) > 0 Then m$ = UdpRecv$(h)
+Bien("y viene vacio de verdad", m$ = "")
+
+Print ""
+Print "== 8. UDP: la difusion sale =="
+; Aqui SOLO se comprueba que el kernel la acepta y la manda sin
+; preguntar por ARP -- por eso tiene que salir A LA PRIMERA, sin el -3.
+; Que LLEGUE a otra maquina no se puede probar con una sola: hace falta
+; una segunda Pi (ver partida.nb).
+envio$ = "hay alguien?"
+r = UdpSend(h, "255.255.255.255", MI_PUERTO, envio$)
+Dato("difusion a 255.255.255.255", Str$(r))
+Bien("sale a la primera, sin esperar al ARP", r = Len(envio$))
+
+; La difusion de la propia red, que es la otra forma de escribirla.
+; Solo tiene sentido si hay mascara (con la IP de reserva no la hay).
+If NetMask$() <> "0.0.0.0" Then
+  Print "         (con mascara: se prueba tambien la de la propia red)"
+EndIf
+
+Bien("ningun datagrama perdido por cola llena", UdpLost(h) = 0)
+
+UdpClose h
+
+; ---------------------------------------------------------------
+Print ""
+If fallos = 0
+  Print "TODO CORRECTO. La red funciona de punta a punta."
+Else
+  Print "HAY FALLOS: " + Str$(fallos)
+  Print ""
+  Print "Mira el terminal del Mac: si ahi no aparece nada, no llego"
+  Print "ningun paquete y el problema esta por debajo de HTTP."
+EndIf

@@ -1,0 +1,214 @@
+; ---------------------------------------------------------------
+; La logica del Tetris: tablero, piezas, puntuacion y la tabla de
+; mejores. Sin nada de pantalla ni teclado, para poder probarla sola
+; (se puede incluir desde un programa de consola).
+;
+; Lo usa tetris.nb con:  Include "tetris_logica.nb"
+; ---------------------------------------------------------------
+Global ANCHO, ALTO
+ANCHO = 10 : ALTO = 20
+
+Global pieza, giro, px, py, siguiente, puntos, lineas, nivel, perdido, semilla
+Dim tablero(9, 19)
+Dim formas$(27)
+Dim mejor_nombre$(9)
+Dim mejor_puntos(9)
+
+Function CargarFormas()
+  Restore piezas
+  For i = 0 To 27
+    Read formas$(i)
+  Next
+End Function
+
+; ---- el tablero ----
+
+Function Nueva()
+  pieza = siguiente
+  If pieza = 0 Then pieza = Azar(7) + 1
+  siguiente = Azar(7) + 1
+  giro = 0
+  px = 3 : py = 0
+  If Choca(px, py, giro) Then perdido = 1
+End Function
+
+Function Azar(n)                 ; un numero de 0 a n-1, sin depender de Rnd
+  semilla = (semilla * 1103515245 + 12345) Mod 2147483648
+  Return (semilla / 65536) Mod n
+End Function
+
+Function Buscar(texto$, que$)    ; como Instr: donde empieza que$ dentro de texto$ (0 si no esta)
+  Local n, i
+  n = Len(que$)
+  For i = 1 To Len(texto$) - n + 1
+    If Mid$(texto$, i, n) = que$ Then Return i
+  Next
+  Return 0
+End Function
+
+Function Celda(p, g, i)          ; el caracter i (0..15) de la pieza p girada g
+  f$ = formas$((p - 1) * 4 + g)
+  Return Asc(Mid$(f$, i + 1, 1))
+End Function
+
+Function Choca(nx, ny, ng)
+  Local i, x, y
+  For i = 0 To 15
+    If Celda(pieza, ng, i) <> 46      ; 46 es el punto: hueco
+      x = nx + (i Mod 4)
+      y = ny + (i / 4)
+      If x < 0 Or x >= ANCHO Or y >= ALTO Then Return 1
+      If y >= 0
+        If tablero(x, y) > 0 Then Return 1
+      EndIf
+    EndIf
+  Next
+  Return 0
+End Function
+
+Function Baja()
+  If Choca(px, py + 1, giro) Then Return 0
+  py = py + 1
+  Return 1
+End Function
+
+Function Asentar()
+  Local i, x, y
+  For i = 0 To 15
+    If Celda(pieza, giro, i) <> 46
+      x = px + (i Mod 4)
+      y = py + (i / 4)
+      If y >= 0 Then tablero(x, y) = pieza
+    EndIf
+  Next
+  QuitarLineas()
+  Nueva()
+End Function
+
+Function QuitarLineas()
+  Local hechas, x, y, k, llena
+  hechas = 0
+  For y = 0 To ALTO - 1
+    llena = 1
+    For x = 0 To ANCHO - 1
+      If tablero(x, y) = 0 Then llena = 0
+    Next
+    If llena = 1
+      hechas = hechas + 1
+      For k = y To 1 Step -1
+        For x = 0 To ANCHO - 1
+          tablero(x, k) = tablero(x, k - 1)
+        Next
+      Next
+      For x = 0 To ANCHO - 1
+        tablero(x, 0) = 0
+      Next
+    EndIf
+  Next
+  If hechas > 0
+    lineas = lineas + hechas
+    If hechas = 1 Then puntos = puntos + 40 * (nivel + 1)
+    If hechas = 2 Then puntos = puntos + 100 * (nivel + 1)
+    If hechas = 3 Then puntos = puntos + 300 * (nivel + 1)
+    If hechas >= 4 Then puntos = puntos + 1200 * (nivel + 1)
+    nivel = lineas / 10
+    If nivel > 12 Then nivel = 12
+  EndIf
+End Function
+
+; ---- puntuaciones ----
+
+Function CargarPuntuaciones()
+  Local i, f, l$, corte
+  For i = 0 To 9
+    mejor_nombre$(i) = ""
+    mejor_puntos(i) = 0
+  Next
+  If FileExists("tetris.txt") = 0 Then Return
+  f = OpenFile("tetris.txt")
+  i = 0
+  While Not Eof(f)
+    l$ = ReadLine$(f)
+    corte = Buscar(l$, " ")
+    If corte > 0 And i < 10
+      mejor_nombre$(i) = Left$(l$, corte - 1)
+      mejor_puntos(i) = Val(Right$(l$, Len(l$) - corte))
+      i = i + 1
+    EndIf
+  Wend
+  CloseFile f
+End Function
+
+Function GuardarPuntuaciones()
+  Local i, h
+  h = WriteFile("tetris.txt")
+  If h < 0 Then Return
+  For i = 0 To 9
+    If mejor_puntos(i) > 0
+      WriteLine h, mejor_nombre$(i) + " " + Str$(mejor_puntos(i))
+    EndIf
+  Next
+  CloseFile h
+End Function
+
+Function Meter(nombre$, p)      ; en su sitio, de mayor a menor
+  For i = 0 To 9
+    If p > mejor_puntos(i)
+      For k = 9 To i + 1 Step -1
+        mejor_nombre$(k) = mejor_nombre$(k - 1)
+        mejor_puntos(k) = mejor_puntos(k - 1)
+      Next
+      mejor_nombre$(i) = nombre$
+      mejor_puntos(i) = p
+      Return i
+    EndIf
+  Next
+  Return -1
+End Function
+
+Function PedirNombre()
+  Local nombre$, listo, k, letra$
+  nombre$ = ""
+  listo = 0
+  While listo = 0
+    Color 18, 20, 26
+    Cls
+    Color 230, 230, 235
+    Text 90, 240, "SE ACABO -- " + Str$(puntos) + " puntos"
+    Text 90, 280, "Tu nombre: " + nombre$ + "_"
+    Color 150, 156, 166
+    Text 90, 320, "Escribe y pulsa Intro"
+    k = GetKey()
+    While k > 0
+      If k = 28 Then listo = 1
+      If k = 14 And Len(nombre$) > 0 Then nombre$ = Left$(nombre$, Len(nombre$) - 1)
+      letra$ = Tecla$(k)
+      If letra$ <> "" And Len(nombre$) < 8 Then nombre$ = nombre$ + letra$
+      k = GetKey()
+    Wend
+    Delay 30
+  Wend
+  If nombre$ = "" Then nombre$ = "NEMO"
+  Meter(nombre$, puntos)
+End Function
+
+Function Tecla$(k)              ; scancode -> letra (las del teclado, en su orden)
+  Local filas$
+  filas$ = "qwertyuiopasdfghjklzxcvbnm"
+  If k >= 16 And k <= 25 Then Return Mid$(filas$, k - 15, 1)
+  If k >= 30 And k <= 38 Then Return Mid$(filas$, k - 19, 1)
+  If k >= 44 And k <= 50 Then Return Mid$(filas$, k - 24, 1)
+  If k >= 2 And k <= 10 Then Return Mid$("123456789", k - 1, 1)
+  If k = 11 Then Return "0"
+  Return ""
+End Function
+
+; ---- las siete piezas, en sus cuatro giros ----
+.piezas
+Data "....XXXX........", "..X...X...X...X.", "....XXXX........", "..X...X...X...X."
+Data "X...XXX.........", ".XX..X...X......", "....XXX...X.....", "..X...XX..X....."
+Data "..X.XXX.........", ".X...X...XX.....", "....XXX.X.......", "XX...X...X......"
+Data ".XX..XX.........", ".XX..XX.........", ".XX..XX.........", ".XX..XX........."
+Data ".XX.XX..........", "X...XX...X......", ".XX.XX..........", "X...XX...X......"
+Data ".X..XXX.........", ".X...XX..X......", "....XXX..X......", ".X..XX...X......"
+Data "XX...XX.........", "..X..XX..X......", "XX...XX.........", "..X..XX..X......"

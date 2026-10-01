@@ -1,0 +1,73 @@
+; teclado.nb - el teclado entero de un vistazo.
+; Para incluir con:  Include "teclado.nb"
+;
+;   LeeTeclado()      una vez por fotograma: dos llamadas al sistema
+;   Pulsada(codigo)   1 si esa tecla esta pulsada AHORA -- sin syscall
+;   Nueva(codigo)     1 solo el primer fotograma en que se pulsa
+;
+; POR QUE: KeyDown(c) es una llamada al sistema POR TECLA. Correr,
+; saltar y disparar eran tres cada fotograma. KeyBank(n) trae 64 teclas
+; de golpe en un entero, asi que con dos llamadas se tiene todo lo que
+; usa un juego: el banco 0 lleva Esc, Espacio, numeros y letras, y el
+; banco 1 las flechas. A partir de ahi, mirar una tecla es un And.
+;
+; Nueva() compara con el fotograma anterior, asi que da el flanco: sirve
+; para saltar o disparar sin que se repita solo por dejar la tecla
+; apretada. Es lo que KeyHit hace en el kernel, pero sin salir de aqui.
+;
+; Codigos (los del driver, estilo evdev, NO los de BlitzPlus):
+;   1 Esc   28 Enter   57 Espacio   103 Arriba   105 Izquierda
+;   106 Derecha   108 Abajo   30 A   17 W   31 S   32 D
+
+; Los dos bancos de teclas y los del fotograma anterior.
+Global tec_b0
+Global tec_b1
+Global tec_ant0
+Global tec_ant1
+
+Function LeeTeclado()
+  tec_ant0 = tec_b0
+  tec_ant1 = tec_b1
+  tec_b0 = KeyBank(0)
+  tec_b1 = KeyBank(1)
+  Return 0
+End Function
+
+; Bit 'codigo' del banco que le toca. Se usa Shr en vez de dividir:
+; con enteros de 64 bits, el bit 63 tiene el signo puesto y una
+; division lo trataria como negativo.
+Function Pulsada(pu_c)
+  If pu_c < 0
+    Return 0
+  EndIf
+  If pu_c < 64
+    Return (tec_b0 Shr pu_c) And 1
+  EndIf
+  If pu_c < 128
+    Return (tec_b1 Shr (pu_c - 64)) And 1
+  EndIf
+  Return 0
+End Function
+
+Function PulsadaAntes(pa_c)
+  If pa_c < 0
+    Return 0
+  EndIf
+  If pa_c < 64
+    Return (tec_ant0 Shr pa_c) And 1
+  EndIf
+  If pa_c < 128
+    Return (tec_ant1 Shr (pa_c - 64)) And 1
+  EndIf
+  Return 0
+End Function
+
+Function Nueva(nu_c)
+  If Pulsada(nu_c) = 0
+    Return 0
+  EndIf
+  If PulsadaAntes(nu_c) = 1
+    Return 0
+  EndIf
+  Return 1
+End Function

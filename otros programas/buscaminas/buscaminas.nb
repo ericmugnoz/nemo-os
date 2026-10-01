@@ -1,0 +1,147 @@
+; ---------------------------------------------------------------
+; BUSCAMINAS para Nemo OS, en Nemo Basic
+;
+;   Clic izquierdo: destapar     Clic derecho: poner o quitar bandera
+;   N: partida nueva             Esc: salir
+;
+; Las imagenes (mina, explosion y bandera) estan en DOCUMENTOS/IMAGENES.
+; ---------------------------------------------------------------
+Include "buscaminas_logica.nb"
+
+Graphics 560, 620
+ClsColor 236, 234, 228           ; el fondo, claro (Cls borra de negro si no se dice)
+
+Global LADO, OX, OY, img_mina, img_boom, img_bandera, empezado, ultimo_tiempo
+LADO = 32 : OX = 24 : OY = 70
+
+; las imagenes con fondo transparente (el magenta 0xFF00FF pasa a transparente)
+img_mina = LoadImage("tr_mina.nimg")
+img_boom = LoadImage("tr_explosion.nimg")
+img_bandera = LoadImage("tr_bandera.nimg")
+MaskImage img_mina, 16711935
+MaskImage img_boom, 16711935
+MaskImage img_bandera, 16711935
+
+semilla = MilliSecs()
+Empezar()
+empezado = MilliSecs()
+
+Global salir, antes_izq, antes_der
+salir = 0
+
+While salir = 0
+  Raton()
+  If KeyHit(49) Then NuevaPartida()      ; N
+  If KeyHit(1) Then salir = 1            ; Esc
+  Pintar()
+  Delay 16
+Wend
+End
+
+Function NuevaPartida()
+  semilla = MilliSecs()
+  Empezar()
+  empezado = MilliSecs()
+End Function
+
+Function Raton()
+  Local mx, my, cx, cy
+  mx = MouseX() : my = MouseY()
+  cx = (mx - OX) / LADO
+  cy = (my - OY) / LADO
+  If mx < OX Or my < OY Or cx >= ANCHO Or cy >= ALTO Then Return 0
+  If perdido = 1 Or ganado = 1 Then Return 0
+  If MouseHit(1) Then Destapar(cx, cy)
+  If MouseHit(2) Then Marcar(cx, cy)
+  Return 1
+End Function
+
+Function Segundos()
+  If perdido = 1 Or ganado = 1 Then Return ultimo_tiempo
+  ultimo_tiempo = (MilliSecs() - empezado) / 1000
+  Return ultimo_tiempo
+End Function
+
+Function ColorNumero(n)
+  If n = 1 Then Color 70, 120, 230
+  If n = 2 Then Color 50, 150, 70
+  If n = 3 Then Color 210, 70, 60
+  If n = 4 Then Color 120, 80, 190
+  If n = 5 Then Color 190, 120, 40
+  If n = 6 Then Color 60, 170, 180
+  If n >= 7 Then Color 60, 62, 70
+End Function
+
+Function Casilla(x, y)
+  Local px, py, n
+  px = OX + x * LADO
+  py = OY + y * LADO
+  If vista(x, y) = 0
+    Color 150, 154, 165                       ; tapada, con relieve
+    Rect px, py, LADO - 1, LADO - 1, 1
+    Color 200, 204, 214
+    Rect px, py, LADO - 1, 2, 1
+    Rect px, py, 2, LADO - 1, 1
+    Color 110, 114, 124
+    Rect px, py + LADO - 3, LADO - 1, 2, 1
+    Rect px + LADO - 3, py, 2, LADO - 1, 1
+    If marca(x, y) = 1 Then DrawImage img_bandera, px, py
+    Return 0
+  EndIf
+  Color 205, 205, 200                         ; destapada
+  Rect px, py, LADO - 1, LADO - 1, 1
+  Color 170, 170, 165
+  Rect px, py, LADO - 1, 1, 1
+  Rect px, py, 1, LADO - 1, 1
+  If mina(x, y) = 1
+    DrawImage img_boom, px, py
+    Return 0
+  EndIf
+  n = cuenta(x, y)
+  If n > 0
+    ColorNumero(n)
+    Text px + 11, py + 8, Str$(n)
+  EndIf
+  Return 0
+End Function
+
+Function Pintar()
+  Local x, y
+  Cls
+  ; marcador: panel claro con borde, y letras oscuras encima
+  Color 214, 212, 206
+  Rect 20, 16, 520, 40, 1
+  Color 120, 124, 134
+  Rect 20, 16, 520, 40, 0
+  DrawImage img_mina, 28, 20
+  Color 30, 32, 40
+  Text 66, 28, "x " + Str$(MINAS - banderas)
+  Text 250, 28, "Tiempo: " + Str$(Segundos()) + " s"
+  If perdido = 1
+    Color 200, 60, 50
+    Text 400, 28, "BOOM"
+  ElseIf ganado = 1
+    Color 40, 150, 70
+    Text 400, 28, "GANASTE"
+  Else
+    Color 90, 94, 104
+    Text 400, 28, "N: nueva"
+  EndIf
+  For y = 0 To ALTO - 1
+    For x = 0 To ANCHO - 1
+      Casilla(x, y)
+    Next
+  Next
+  ; al perder, se ven todas las minas
+  If perdido = 1
+    For y = 0 To ALTO - 1
+      For x = 0 To ANCHO - 1
+        If mina(x, y) = 1 And vista(x, y) = 0 And marca(x, y) = 0
+          DrawImage img_mina, OX + x * LADO, OY + y * LADO
+        EndIf
+      Next
+    Next
+  EndIf
+  Color 90, 94, 104
+  Text 24, 596, "Clic: destapar   Clic derecho: bandera   N: nueva   Esc: salir"
+End Function

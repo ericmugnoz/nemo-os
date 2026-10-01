@@ -1,0 +1,48 @@
+; t12.nb -- animacion: reloj, onda que avanza y orbita
+; Espacio para salir
+
+Graphics 400, 300
+
+t = 0
+
+While Not KeyDown(57)
+
+  Cls
+
+  ; --- onda que se desplaza ---
+  Color 0, 200, 255
+  For x = 0 To 399
+    y# = Sin(x * 2 + t * 4) * 30.0
+    Plot x, 50 + Int(y#)
+  Next
+
+  ; --- reloj: una aguja que gira ---
+  Color 255, 120, 255
+  cx = 100
+  cy = 190
+  For a = 0 To 359 Step 30
+    x# = Cos(a) * 55.0
+    y# = Sin(a) * 55.0
+    Plot cx + Int(x#), cy + Int(y#)
+  Next
+  ax# = Cos(t * 6 - 90) * 50.0
+  ay# = Sin(t * 6 - 90) * 50.0
+  Color 255, 255, 255
+  Line cx, cy, cx + Int(ax#), cy + Int(ay#)
+
+  ; --- orbita: una bola girando alrededor de otra ---
+  ox = 290
+  oy = 190
+  Color 255, 220, 0
+  Oval ox - 10, oy - 10, 20, 20
+  bx# = Cos(t * 9) * 60.0
+  by# = Sin(t * 9) * 35.0
+  Color 0, 255, 150
+  Oval ox + Int(bx#) - 6, oy + Int(by#) - 6, 12, 12
+
+  Color 255, 255, 255
+  Text 8, 275, "Espacio para salir"
+
+  t = t + 1
+  d = Pump()
+Wend

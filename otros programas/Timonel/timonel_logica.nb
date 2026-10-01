@@ -1,0 +1,280 @@
+; timonel_logica.nb -- el texto de Timonel y su edicion, sin nada de
+; pantalla. Lo incluye timonel.nb, y se puede incluir desde un programa de
+; consola para usarlo sin la parte grafica, igual que hacen tetris, arkanoid
+; y buscaminas en esta misma carpeta.
+;
+; Aqui vive lo que, si se rompe, PIERDE DATOS: el buffer de lineas, el
+; cursor, y lo que hace cada tecla. Por eso esta separado y por eso se
+; prueba a solas, sin ventana de por medio.
+
+; El unico techo que queda. 2000 lineas son de sobra para cualquier fuente
+; de este sistema -- este archivo tiene unas 600 -- y el coste es solo la
+; memoria de las cadenas vacias.
+Const MAX_LINEAS = 2000
+Const TAB_ANCHO = 2
+
+; Las letras de control que manda el kernel por las teclas que no tienen
+; letra propia. Vienen por ReadChar igual que cualquier otra, asi que un
+; solo bucle sirve para todo.
+Const K_RETROCESO = 8
+Const K_TAB       = 9
+Const K_INTRO     = 10
+Const K_ARRIBA    = 17
+Const K_ABAJO     = 18
+Const K_IZQUIERDA = 19
+Const K_DERECHA   = 20
+Const K_INICIO    = 21
+Const K_FIN       = 22
+Const K_PAGARRIBA = 23
+Const K_PAGABAJO  = 24
+Const K_SUPRIMIR  = 127
+
+; --- el texto y el cursor ---
+Global sucio = 0                 ; 1 = hay cambios sin guardar; lo ponen las
+                                 ; funciones de edicion de aqui abajo
+Global n_lineas = 1              ; siempre hay al menos una linea, aunque este vacia
+Global cur_l = 0                 ; linea del cursor (0 = la primera)
+Global cur_c = 0                 ; columna del cursor, en letras, 0 = antes de la primera
+Global arriba = 0                ; primera linea visible
+Global izq = 0                   ; primera columna visible
+Global visibles = 30
+Global columnas = 60
+Global repintar = 1
+
+Dim linea$(MAX_LINEAS)
+
+; ---------------------------------------------------------------
+; Rutas
+; ---------------------------------------------------------------
+; Une carpeta y nombre sin dejar una barra suelta al principio: en la
+; raiz, carpeta$ esta vacia y la ruta es el nombre a secas.
+Function Unir$(base$, nombre$)
+  If base$ = "" Then Return nombre$
+  Return base$ + "/" + nombre$
+End Function
+
+; La carpeta que contiene a esta: se corta por la ultima barra. Sin barra,
+; ya estabamos en la raiz.
+Function Padre$(ruta$)
+  Local i, corte
+  corte = 0
+  For i = 1 To Len(ruta$)
+    If Mid$(ruta$, i, 1) = "/" Then corte = i
+  Next
+  If corte = 0 Then Return ""
+  Return Left$(ruta$, corte - 1)
+End Function
+
+Function SoloNombre$(ruta$)
+  Local i, corte
+  corte = 0
+  For i = 1 To Len(ruta$)
+    If Mid$(ruta$, i, 1) = "/" Then corte = i
+  Next
+  If corte = 0 Then Return ruta$
+  Return Right$(ruta$, Len(ruta$) - corte)
+End Function
+
+Function Dos$(v)
+  If v < 10 Then Return "0" + Str$(v)
+  Return Str$(v)
+End Function
+
+; ---------------------------------------------------------------
+; El texto
+; ---------------------------------------------------------------
+Function Vaciar()
+  Local i
+  For i = 0 To MAX_LINEAS - 1
+    linea$(i) = ""
+  Next
+  n_lineas = 1
+  cur_l = 0
+  cur_c = 0
+  arriba = 0
+  izq = 0
+  sucio = 0
+  repintar = 1
+  Return 0
+End Function
+
+; Mete una linea nueva en la posicion 'donde', empujando el resto hacia
+; abajo. Devuelve 0 si no cabe -- y entonces no toca nada, que es lo que
+; hay que hacer con un tope: negarse, no recortar en silencio.
+Function AbrirHueco(donde)
+  Local i
+  If n_lineas >= MAX_LINEAS Then Return 0
+  For i = n_lineas To donde + 1 Step -1
+    linea$(i) = linea$(i - 1)
+  Next
+  linea$(donde) = ""
+  n_lineas = n_lineas + 1
+  Return 1
+End Function
+
+Function QuitarLinea(donde)
+  Local i
+  If n_lineas <= 1 Then Return 0
+  For i = donde To n_lineas - 2
+    linea$(i) = linea$(i + 1)
+  Next
+  linea$(n_lineas - 1) = ""
+  n_lineas = n_lineas - 1
+  Return 1
+End Function
+
+; ---------------------------------------------------------------
+; Edicion
+; ---------------------------------------------------------------
+Function InsertarLetra(c)
+  Local l$, izda$, dcha$
+  l$ = linea$(cur_l)
+  izda$ = Left$(l$, cur_c)
+  dcha$ = Right$(l$, Len(l$) - cur_c)
+  linea$(cur_l) = izda$ + Chr$(c) + dcha$
+  cur_c = cur_c + 1
+  sucio = 1
+  Return 0
+End Function
+
+Function PartirLinea()
+  Local l$, izda$, dcha$
+  If AbrirHueco(cur_l + 1) = 0 Then Return 0
+  l$ = linea$(cur_l)
+  izda$ = Left$(l$, cur_c)
+  dcha$ = Right$(l$, Len(l$) - cur_c)
+  linea$(cur_l) = izda$
+  linea$(cur_l + 1) = dcha$
+  cur_l = cur_l + 1
+  cur_c = 0
+  sucio = 1
+  Return 0
+End Function
+
+Function Retroceso()
+  Local l$, ant$, izda$, dcha$
+  If cur_c > 0 Then
+    l$ = linea$(cur_l)
+    izda$ = Left$(l$, cur_c - 1)
+    dcha$ = Right$(l$, Len(l$) - cur_c)
+    linea$(cur_l) = izda$ + dcha$
+    cur_c = cur_c - 1
+    sucio = 1
+    Return 0
+  EndIf
+  ; Al principio de linea: se pega con la de arriba.
+  If cur_l = 0 Then Return 0
+  ant$ = linea$(cur_l - 1)
+  cur_c = Len(ant$)
+  linea$(cur_l - 1) = ant$ + linea$(cur_l)
+  QuitarLinea(cur_l)
+  cur_l = cur_l - 1
+  sucio = 1
+  Return 0
+End Function
+
+Function Suprimir()
+  Local l$, izda$, dcha$
+  l$ = linea$(cur_l)
+  If cur_c < Len(l$) Then
+    izda$ = Left$(l$, cur_c)
+    dcha$ = Right$(l$, Len(l$) - cur_c - 1)
+    linea$(cur_l) = izda$ + dcha$
+    sucio = 1
+    Return 0
+  EndIf
+  ; Al final de linea: se trae la de abajo.
+  If cur_l >= n_lineas - 1 Then Return 0
+  linea$(cur_l) = l$ + linea$(cur_l + 1)
+  QuitarLinea(cur_l + 1)
+  sucio = 1
+  Return 0
+End Function
+
+; Deja el cursor dentro de la linea en la que esta: al subir o bajar, la
+; columna puede caer mas alla del final de la nueva linea.
+Function EncajarColumna()
+  Local largo
+  largo = Len(linea$(cur_l))
+  If cur_c > largo Then cur_c = largo
+  If cur_c < 0 Then cur_c = 0
+  Return 0
+End Function
+
+Function Mover(c)
+  If c = K_IZQUIERDA Then
+    If cur_c > 0 Then
+      cur_c = cur_c - 1
+    Else
+      If cur_l > 0 Then
+        cur_l = cur_l - 1
+        cur_c = Len(linea$(cur_l))
+      EndIf
+    EndIf
+  EndIf
+  If c = K_DERECHA Then
+    If cur_c < Len(linea$(cur_l)) Then
+      cur_c = cur_c + 1
+    Else
+      If cur_l < n_lineas - 1 Then
+        cur_l = cur_l + 1
+        cur_c = 0
+      EndIf
+    EndIf
+  EndIf
+  If c = K_ARRIBA Then
+    If cur_l > 0 Then cur_l = cur_l - 1
+    EncajarColumna()
+  EndIf
+  If c = K_ABAJO Then
+    If cur_l < n_lineas - 1 Then cur_l = cur_l + 1
+    EncajarColumna()
+  EndIf
+  If c = K_INICIO Then cur_c = 0
+  If c = K_FIN Then cur_c = Len(linea$(cur_l))
+  If c = K_PAGARRIBA Then
+    cur_l = cur_l - visibles
+    If cur_l < 0 Then cur_l = 0
+    EncajarColumna()
+  EndIf
+  If c = K_PAGABAJO Then
+    cur_l = cur_l + visibles
+    If cur_l > n_lineas - 1 Then cur_l = n_lineas - 1
+    EncajarColumna()
+  EndIf
+  Return 0
+End Function
+
+; Mueve la ventana de lo visible para que el cursor siempre se vea.
+Function SeguirCursor()
+  If cur_l < arriba Then arriba = cur_l
+  If cur_l > arriba + visibles - 1 Then arriba = cur_l - visibles + 1
+  If arriba < 0 Then arriba = 0
+  If cur_c < izq Then izq = cur_c
+  If cur_c > izq + columnas - 1 Then izq = cur_c - columnas + 1
+  If izq < 0 Then izq = 0
+  Return 0
+End Function
+
+; Una tecla. Devuelve 1 si hay que repintar.
+Function Tecla(c)
+  Local i
+  If c = K_INTRO Then
+    PartirLinea()
+  ElseIf c = K_RETROCESO Then
+    Retroceso()
+  ElseIf c = K_SUPRIMIR Then
+    Suprimir()
+  ElseIf c = K_TAB Then
+    For i = 1 To TAB_ANCHO
+      InsertarLetra(32)
+    Next
+  ElseIf c >= K_ARRIBA And c <= K_PAGABAJO Then
+    Mover(c)
+  ElseIf c >= 32 Then
+    InsertarLetra(c)
+  EndIf
+  SeguirCursor()
+  Return 1
+End Function
+

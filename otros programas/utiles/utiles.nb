@@ -1,0 +1,231 @@
+; ---------------------------------------------------------------
+; UTILES.NB -- las funciones que todo programa acaba escribiendo.
+;
+; Se usa con:   Include "utiles.nb"
+;
+; POR QUE ESTAN AQUI Y NO SON COMANDOS DEL LENGUAJE.
+;
+; Ninguna necesita nada del kernel: se hacen enteras con Len, Mid$, Instr y
+; los comandos de carpetas que ya existen. Meterlas en el compilador seria
+; hacerlo mas grande para no ganar nada, y cada comando incorporado es un
+; nombre que ya nadie puede usar para una funcion suya.
+;
+; Si alguna acaba usandose en cuatro o cinco programas, entonces si merece
+; ser comando: lo que se repite en todas partes vale la pena tenerlo cerca.
+; ---------------------------------------------------------------
+
+; ---------------------------------------------------------------
+; RUTAS
+;
+; Las rutas de Nemo OS admiten "/" y "\" mezclados, asi que todas estas
+; funciones buscan los dos. Dar por hecho uno solo funciona hasta que
+; alguien escribe el otro, y entonces StripDir$ devuelve la ruta entera
+; como si fuera el nombre del archivo -- sin error, simplemente mal.
+; ---------------------------------------------------------------
+
+; La posicion de la ultima barra, de cualquiera de las dos. 0 si no hay.
+Function UltimaBarra(ruta$)
+  Local i, ultima, c$
+  ultima = 0
+  For i = 1 To Len(ruta$)
+    c$ = Mid$(ruta$, i, 1)
+    If c$ = "/" Or c$ = "\" Then ultima = i
+  Next
+  Return ultima
+End Function
+
+; "JUEGOS/tetris.pro" -> "tetris.pro"
+Function StripDir$(ruta$)
+  Local b
+  b = UltimaBarra(ruta$)
+  If b = 0 Then Return ruta$
+  Return Mid$(ruta$, b + 1, Len(ruta$) - b)
+End Function
+
+; "JUEGOS/tetris.pro" -> "JUEGOS".  Sin carpeta, cadena vacia.
+Function ExtractDir$(ruta$)
+  Local b
+  b = UltimaBarra(ruta$)
+  If b = 0 Then Return ""
+  Return Mid$(ruta$, 1, b - 1)
+End Function
+
+; La posicion del punto de la extension, contando desde el final y sin
+; pasar de la ultima barra: "JUEGOS.VIEJOS/tetris" no tiene extension, y
+; mirar el primer punto diria que la extension es "VIEJOS/tetris".
+Function PuntoExtension(ruta$)
+  Local i, c$
+  For i = Len(ruta$) To 1 Step -1
+    c$ = Mid$(ruta$, i, 1)
+    If c$ = "/" Or c$ = "\" Then Return 0
+    If c$ = "." Then Return i
+  Next
+  Return 0
+End Function
+
+; "tetris.pro" -> "tetris"
+Function StripExt$(nombre$)
+  Local p
+  p = PuntoExtension(nombre$)
+  If p = 0 Then Return nombre$
+  Return Mid$(nombre$, 1, p - 1)
+End Function
+
+; "tetris.pro" -> "pro".  Sin punto, cadena vacia. El punto NO se incluye.
+Function ExtractExt$(nombre$)
+  Local p
+  p = PuntoExtension(nombre$)
+  If p = 0 Then Return ""
+  Return Mid$(nombre$, p + 1, Len(nombre$) - p)
+End Function
+
+; ---------------------------------------------------------------
+; CARACTERES
+;
+; Reciben una CADENA y miran su primera letra, no un codigo: asi se
+; escriben con lo que devuelve Mid$ sin tener que pasar por Asc.
+; ---------------------------------------------------------------
+
+Function IsDigit(c$)
+  Local n
+  If Len(c$) = 0 Then Return 0
+  n = Asc(c$)
+  If n >= 48 And n <= 57 Then Return 1
+  Return 0
+End Function
+
+; Las de la A a la Z, y ademas la ñ y la ç, que ReadChar devuelve con su
+; codigo de Latin-1 (241/209 y 231/199). Dejarlas fuera haria que "añil"
+; no fuera una palabra, que es justo el tipo de fallo que solo aparece
+; cuando el programa ya esta en manos de alguien.
+Function IsAlpha(c$)
+  Local n
+  If Len(c$) = 0 Then Return 0
+  n = Asc(c$)
+  If n >= 65 And n <= 90 Then Return 1
+  If n >= 97 And n <= 122 Then Return 1
+  If n = 241 Or n = 209 Then Return 1
+  If n = 231 Or n = 199 Then Return 1
+  Return 0
+End Function
+
+Function IsSpace(c$)
+  Local n
+  If Len(c$) = 0 Then Return 0
+  n = Asc(c$)
+  If n = 32 Or n = 9 Then Return 1
+  Return 0
+End Function
+
+; ---------------------------------------------------------------
+; PARTIR UNA CADENA
+; ---------------------------------------------------------------
+
+; Parte texto$ por sep$ y deja los trozos en partes$(). Devuelve cuantos.
+;
+; El array se pasa como parametro, asi que la funcion escribe en el del
+; programa que la llama. Se para al llenarlo: escribir mas alla del final
+; daria un error de indice y se llevaria el programa por delante por algo
+; tan tonto como una linea con mas comas de las previstas.
+;
+; 'tope' es el tamaño del array (el de Dim partes$(n) es n+1 huecos).
+Function Split(texto$, sep$, tope, partes$())
+  Local n, desde, corte
+  n = 0
+  desde = 1
+  If Len(sep$) = 0 Then Return 0
+  Repeat
+    If n >= tope Then Return n
+    corte = Instr(texto$, sep$, desde)
+    If corte = 0 Then
+      partes$(n) = Mid$(texto$, desde, Len(texto$) - desde + 1)
+      Return n + 1
+    EndIf
+    partes$(n) = Mid$(texto$, desde, corte - desde)
+    n = n + 1
+    desde = corte + Len(sep$)
+  Forever
+End Function
+
+; Junta los primeros 'cuantos' trozos con sep$ en medio. El contrario de
+; Split, para volver a armar una ruta o una linea de datos.
+Function Join$(sep$, cuantos, partes$())
+  Local i, r$
+  r$ = ""
+  For i = 0 To cuantos - 1
+    If i > 0 Then r$ = r$ + sep$
+    r$ = r$ + partes$(i)
+  Next
+  Return r$
+End Function
+
+; ---------------------------------------------------------------
+; CARPETAS
+; ---------------------------------------------------------------
+
+; Lista carpeta$ y deja los nombres en nombres$() y su tipo en tipos()
+; (1 archivo, 2 carpeta). Devuelve cuantos, o -1 si la carpeta no existe.
+;
+; Para la raiz, carpeta$ = "".
+;
+; El tipo se pregunta con la RUTA COMPLETA, no con el nombre suelto: si se
+; preguntara solo por el nombre, FileType lo buscaria donde siempre (la
+; raiz y DOCUMENTOS) y contestaria por otro archivo que se llame igual en
+; otro sitio. Dos archivos con el mismo nombre en carpetas distintas es lo
+; normal, no un caso raro.
+Function ListDir(carpeta$, tope, nombres$(), tipos())
+  Local h, n, nom$, ruta$
+  h = ReadDir(carpeta$)
+  If h < 0 Then Return -1
+  n = 0
+  Repeat
+    If n >= tope Then Exit
+    nom$ = NextFile$(h)
+    If nom$ = "" Then Exit
+    nombres$(n) = nom$
+    If carpeta$ = ""
+      ruta$ = nom$
+    Else
+      ruta$ = carpeta$ + "/" + nom$
+    EndIf
+    tipos(n) = FileType(ruta$)
+    n = n + 1
+  Forever
+  CloseDir h
+  Return n
+End Function
+
+; ---------------------------------------------------------------
+; DOBLE CLIC
+;
+; Nemo OS no manda un evento de doble clic: manda dos eventos de control
+; seguidos. Esto los junta.
+;
+; La condicion es "el mismo control, dos veces, en menos de medio
+; segundo". Sin comprobar que es el MISMO, dos clics rapidos en dos
+; botones distintos contarian como doble clic del segundo -- y eso, en un
+; explorador de archivos, abre lo que no era.
+; ---------------------------------------------------------------
+
+Global DOBLE_CLIC_MS, dc_ultimo, dc_cuando
+DOBLE_CLIC_MS = 500
+dc_ultimo = -1
+dc_cuando = -100000
+
+; Se llama justo despues de recibir un evento de control, con el id del
+; control que lo mando (EventSource()). Devuelve 1 si es un doble clic.
+Function GadgetDoubleClicked(id)
+  Local ahora, doble
+  ahora = MilliSecs()
+  doble = 0
+  If id = dc_ultimo And ahora - dc_cuando < DOBLE_CLIC_MS Then doble = 1
+  dc_ultimo = id
+  ; Tras un doble clic se reinicia el reloj: sin esto, un tercer clic
+  ; contaria como otro doble clic, y un repiqueteo abriria cinco cosas.
+  If doble = 1
+    dc_cuando = -100000
+  Else
+    dc_cuando = ahora
+  EndIf
+  Return doble
+End Function

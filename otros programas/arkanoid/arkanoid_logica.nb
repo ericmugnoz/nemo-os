@@ -1,0 +1,167 @@
+; ---------------------------------------------------------------
+; La logica del Arkanoid: la bola (con decimales), la pala, los
+; ladrillos y los rebotes. Sin pantalla ni teclado, para poder
+; usarla sin la parte grafica.
+;
+; Lo usa arkanoid.nb con:  Include "arkanoid_logica.nb"
+; ---------------------------------------------------------------
+Global ANCHO, ALTO, COLS, FILAS, LAD_ANCHO, LAD_ALTO, LAD_X0, LAD_Y0
+Global IZQ, DER, TECHO                   ; los limites del terreno de juego
+ANCHO = 640 : ALTO = 520
+IZQ = 12 : DER = ANCHO - 12 : TECHO = 46  ; por dentro del marco, bajo el marcador
+COLS = 10 : FILAS = 6
+LAD_ANCHO = 58 : LAD_ALTO = 22 : LAD_X0 = 20 : LAD_Y0 = 60
+
+Global bx#, by#, vx#, vy#, VELOCIDAD#, RADIO
+Global pala_x, PALA_ANCHO, PALA_ALTO, PALA_Y
+Global puntos, vidas, quedan, pegada, nivel, semilla, perdido, ganado
+
+Dim ladrillo(9, 5)              ; 0 = no hay, 1..3 = golpes que aguanta
+
+Function Azar(n)
+  semilla = (semilla * 1103515245 + 12345) Mod 2147483648
+  Return (semilla / 65536) Mod n
+End Function
+
+Function Empezar(n)
+  Local x, y, dureza
+  nivel = n
+  RADIO = 8                       ; el mismo tamaño que la imagen de 16 px
+  VELOCIDAD# = 4.9                ; la bola siempre va a esta velocidad
+  PALA_ANCHO = 96 : PALA_ALTO = 14 : PALA_Y = ALTO - 40
+  pala_x = (ANCHO - PALA_ANCHO) / 2
+  quedan = 0
+  For y = 0 To FILAS - 1
+    For x = 0 To COLS - 1
+      dureza = 1
+      If y = 0 Then dureza = 3
+      If y = 1 Then dureza = 2
+      If nivel > 1 And (x + y) Mod 5 = 0 Then dureza = dureza + 1
+      If dureza > 3 Then dureza = 3
+      ladrillo(x, y) = dureza
+      quedan = quedan + 1
+    Next
+  Next
+  perdido = 0
+  ganado = 0
+  EnLaPala()
+End Function
+
+Function EnLaPala()
+  pegada = 1
+  bx# = pala_x + PALA_ANCHO / 2.0
+  by# = PALA_Y - RADIO - 1.0
+  vx# = 0.0
+  vy# = 0.0
+End Function
+
+Function Lanzar()
+  If pegada = 0 Then Return 0
+  pegada = 0
+  vx# = 2.4
+  If Azar(2) = 1 Then vx# = -2.4
+  vy# = -Sqr(VELOCIDAD# * VELOCIDAD# - vx# * vx#)
+  Return 1
+End Function
+
+Function MoverPala(destino)
+  pala_x = destino
+  If pala_x < IZQ Then pala_x = IZQ
+  If pala_x > DER - PALA_ANCHO Then pala_x = DER - PALA_ANCHO
+  If pegada = 1 Then bx# = pala_x + PALA_ANCHO / 2.0
+  Return pala_x
+End Function
+
+Function LadrilloEn(px#, py#)     ; la fila*100+columna del ladrillo en ese punto, o -1
+  Local cx, cy
+  If px# < LAD_X0 Or py# < LAD_Y0 Then Return -1
+  cx = (px# - LAD_X0) / LAD_ANCHO
+  cy = (py# - LAD_Y0) / LAD_ALTO
+  If cx < 0 Or cx >= COLS Or cy < 0 Or cy >= FILAS Then Return -1
+  If ladrillo(cx, cy) = 0 Then Return -1
+  Return cy * 100 + cx
+End Function
+
+Function Golpear(cual)
+  Local cx, cy
+  cy = cual / 100
+  cx = cual Mod 100
+  ladrillo(cx, cy) = ladrillo(cx, cy) - 1
+  puntos = puntos + 10
+  If ladrillo(cx, cy) = 0
+    quedan = quedan - 1
+    puntos = puntos + 20
+    If quedan = 0 Then ganado = 1
+  EndIf
+  Return ladrillo(cx, cy)
+End Function
+
+; Una vuelta del juego: mueve la bola y resuelve los choques.
+; Devuelve 1 si se ha perdido la bola en esta vuelta.
+Function Paso()
+  Local cual, golpe#, largo#
+  If pegada = 1 Then Return 0
+  bx# = bx# + vx#
+  by# = by# + vy#
+
+  ; Las paredes son las del TERRENO, no las de la ventana: antes rebotaba en
+  ; el borde de la ventana y la bola se subia hasta el marcador.
+  If bx# < IZQ + RADIO
+    bx# = IZQ + RADIO
+    vx# = -vx#
+  EndIf
+  If bx# > DER - RADIO
+    bx# = DER - RADIO
+    vx# = -vx#
+  EndIf
+  If by# < TECHO + RADIO
+    by# = TECHO + RADIO
+    vy# = -vy#
+  EndIf
+
+  ; los ladrillos: se mira delante en horizontal y en vertical
+  cual = LadrilloEn(bx#, by# - RADIO)
+  If cual < 0 Then cual = LadrilloEn(bx#, by# + RADIO)
+  If cual >= 0
+    Golpear(cual)
+    vy# = -vy#
+  Else
+    cual = LadrilloEn(bx# - RADIO, by#)
+    If cual < 0 Then cual = LadrilloEn(bx# + RADIO, by#)
+    If cual >= 0
+      Golpear(cual)
+      vx# = -vx#
+    EndIf
+  EndIf
+
+  ; la pala: el angulo depende de donde golpee
+  If vy# > 0.0 And by# + RADIO >= PALA_Y And by# < PALA_Y + PALA_ALTO
+    If bx# >= pala_x And bx# <= pala_x + PALA_ANCHO
+      by# = PALA_Y - RADIO - 1.0
+      ; el angulo depende de donde golpee, pero la VELOCIDAD no cambia: se
+      ; limita la subida minima y luego se reajusta el vector entero
+      golpe# = (bx# - (pala_x + PALA_ANCHO / 2.0)) / (PALA_ANCHO / 2.0)
+      If golpe# > 1.0 Then golpe# = 1.0
+      If golpe# < -1.0 Then golpe# = -1.0
+      vx# = golpe# * 5.0
+      vy# = -2.0
+      largo# = Sqr(vx# * vx# + vy# * vy#)
+      If largo# > 0.0
+        vx# = vx# * VELOCIDAD# / largo#
+        vy# = vy# * VELOCIDAD# / largo#
+      EndIf
+      puntos = puntos + 1
+    EndIf
+  EndIf
+
+  If by# > ALTO
+    vidas = vidas - 1
+    If vidas <= 0
+      perdido = 1
+    Else
+      EnLaPala()
+    EndIf
+    Return 1
+  EndIf
+  Return 0
+End Function

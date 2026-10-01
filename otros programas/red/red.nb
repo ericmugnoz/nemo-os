@@ -1,0 +1,129 @@
+; ---------------------------------------------------------------
+; RED.NB -- las funciones comodas de red para Nemo Basic.
+;
+; Lo usan sensor.nb y partida.nb con:  Include "red.nb"
+;
+; POR QUE EXISTE ESTO Y NO ESTA EN EL KERNEL.
+;
+; Los comandos de red del lenguaje NO ESPERAN. HttpPost arranca la
+; peticion y vuelve en el acto; despues hay que consultar HttpState()
+; hasta que termine. Eso parece incomodo, y es a proposito.
+;
+; El planificador de Nemo OS es COOPERATIVO: mientras una tarea esta
+; dentro del kernel con el candado grande cogido, ningun otro nucleo
+; entra. Un comando que se quedara esperando ahi dentro no pararia el
+; programa: pararia LA MAQUINA ENTERA -- el raton, el reloj, las demas
+; ventanas. Y el sintoma no se parece a la causa: no es "este comando
+; tarda", es "el sistema se ha congelado".
+;
+; Asi que esperar se hace AQUI, en Nemo Basic, con un bucle y Delay. Delay
+; cede el turno, o sea que mientras esta funcion espera, el resto del
+; sistema sigue vivo. Es el mismo reparto que en cualquier sistema
+; operativo de verdad: el kernel no bloquea, el programa si.
+; ---------------------------------------------------------------
+
+Global RED_PLAZO
+RED_PLAZO = 6000            ; 60 segundos en centesimas (Delay va en 10 ms)
+
+; ---------------------------------------------------------------
+; HTTP
+; ---------------------------------------------------------------
+
+; Espera a que termine la peticion en marcha. Devuelve el codigo HTTP
+; (200, 404...), 0 si fallo, o -1 si se agoto el plazo.
+;
+; El plazo de aqui es una red de seguridad, no el de verdad: http.c ya
+; tiene los suyos (45 s para que el servidor empiece a contestar, 10 s de
+; silencio con la descarga en marcha). Este existe para que un programa no
+; se quede en este bucle para siempre si algo se rompe mas abajo.
+Function RedEsperar()
+  Local vueltas
+  vueltas = 0
+  While HttpState() = 1
+    Delay 1
+    vueltas = vueltas + 1
+    If vueltas > RED_PLAZO Then Return -1
+  Wend
+  If HttpState() = 3 Then Return 0
+  Return HttpCode()
+End Function
+
+; Manda 'datos$' a http://ip$:puerto/ruta$ y espera la contestacion.
+; Devuelve el codigo HTTP, 0 si fallo, -1 si se agoto el plazo, o -2 si
+; no se pudo ni empezar (ya hay otra peticion en marcha, la IP esta mal,
+; o la peticion no cabe).
+;
+; La respuesta se lee despues con HttpBody$(), y el motivo de un fallo
+; con HttpFail$().
+Function RedMandar(ip$, puerto, ruta$, datos$)
+  If HttpPost(ip$, puerto, ruta$, datos$) = 0 Then Return -2
+  Return RedEsperar()
+End Function
+
+; Pide algo y espera. Mismo convenio de devolucion que RedMandar.
+Function RedPedir(ip$, puerto, ruta$)
+  If HttpGet(ip$, puerto, ruta$) = 0 Then Return -2
+  Return RedEsperar()
+End Function
+
+; Un texto explicando el resultado de RedMandar o RedPedir. Para no
+; escribir la misma cadena de If en cada programa.
+Function RedMotivo$(r)
+  If r = -2 Then Return "no se pudo empezar (otra peticion en marcha, o la IP esta mal)"
+  If r = -1 Then Return "se agoto el plazo esperando"
+  If r = 0 Then Return HttpFail$()
+  If r >= 200 And r < 300 Then Return "bien (" + Str$(r) + ")"
+  Return "el servidor contesto " + Str$(r)
+End Function
+
+; ---------------------------------------------------------------
+; UDP
+; ---------------------------------------------------------------
+
+; Un mensaje a TODA la red, sin saber quien hay. Asi es como dos
+; maquinas se encuentran: una grita y la otra contesta.
+;
+; 255.255.255.255 vale siempre, incluso sin router y sin mascara (cable
+; directo entre dos maquinas, que es justo el caso en el que no hay nadie
+; que reparta direcciones).
+Function UdpGritar(h, puerto, mensaje$)
+  Return UdpSend(h, "255.255.255.255", puerto, mensaje$)
+End Function
+
+; Contesta a quien mando el ultimo datagrama leido con UdpRecv$.
+;
+; OJO: esto solo vale INMEDIATAMENTE despues de un UdpRecv$ que haya
+; traido algo. UdpFrom$ devuelve el remitente de ESE datagrama, y si en
+; medio se lee otro, cambia. Con cuatro jugadores, contestarle al de dos
+; mensajes antes es un fallo que no da ningun error: el otro ve cosas
+; raras y no hay forma de saber por que.
+Function UdpResponder(h, mensaje$)
+  Local quien$, puerto
+  quien$ = UdpFrom$(h)
+  puerto = UdpFromPort(h)
+  If puerto = 0 Then Return -1        ; no se ha leido nada todavia
+  Return UdpSend(h, quien$, puerto, mensaje$)
+End Function
+
+; UdpSend devuelve -3 cuando el paquete AUN NO HA SALIDO porque falta
+; resolver la MAC del destino por ARP. Eso pasa SIEMPRE la primera vez
+; que se le habla a una maquina nueva, y no es un error: hay que volver a
+; intentarlo en la siguiente vuelta.
+;
+; Esta funcion lo reintenta unas cuantas veces con una pausa en medio.
+; Devuelve los bytes mandados, o el error si sigue sin salir.
+;
+; Para el trafico continuo de un juego NO hace falta: la primera vez
+; devolvera -3, se pierde ese paquete, y de ahi en adelante la MAC ya
+; esta aprendida y todos salen. Perder el primero de cien por segundo no
+; importa. Hace falta cuando se manda UNA cosa y tiene que llegar.
+Function UdpMandarSeguro(h, ip$, puerto, mensaje$)
+  Local r, intento
+  For intento = 1 To 10
+    r = UdpSend(h, ip$, puerto, mensaje$)
+    If r >= 0 Then Return r
+    If r <> -3 Then Return r          ; un error de verdad: no insistir
+    Delay 5                           ; 50 ms para que llegue la respuesta ARP
+  Next
+  Return -3
+End Function

@@ -1,0 +1,150 @@
+; ---------------------------------------------------------------
+; ARKANOID para Nemo OS, en Nemo Basic
+;
+;   Raton o flechas: mover la pala    Espacio o clic: lanzar
+;   N: partida nueva                  Esc: salir
+;
+; Las imagenes estan en DOCUMENTOS/IMAGENES (tr_bola, tr_corazon).
+; ---------------------------------------------------------------
+Include "arkanoid_logica.nb"
+
+Graphics 640, 560
+ClsColor 16, 18, 26
+
+Global img_bola, img_vida, salir, aviso$, aviso_hasta, raton_antes
+img_bola = LoadImage("tr_bola16.nimg")   ; 16 px: el mismo tamaño que la bola del juego
+img_vida = LoadImage("tr_corazon.nimg")
+MaskImage img_bola, 16711935
+MaskImage img_vida, 16711935
+
+semilla = MilliSecs()
+raton_antes = MouseX()
+vidas = 3
+puntos = 0
+Empezar(1)
+aviso$ = "Espacio o clic para lanzar"
+aviso_hasta = MilliSecs() + 4000
+
+While salir = 0
+  Mandos()
+  If perdido = 0 And ganado = 0 Then Paso()
+  If ganado = 1 And MilliSecs() > aviso_hasta Then SiguienteNivel()
+  Pintar()
+  Delay 16
+Wend
+End
+
+Function SiguienteNivel()
+  puntos = puntos + 200
+  Empezar(nivel + 1)
+  aviso$ = "Nivel " + Str$(nivel)
+  aviso_hasta = MilliSecs() + 2500
+End Function
+
+Function Mandos()
+  Local mx
+  ; El raton manda SOLO si se ha movido: si no, seguia a su posicion en cada
+  ; vuelta y las flechas no servian de nada.
+  mx = MouseX()
+  If mx <> raton_antes
+    raton_antes = mx
+    MoverPala(mx - PALA_ANCHO / 2)
+  EndIf
+  If KeyDown(105) Then MoverPala(pala_x - 9)      ; flecha izquierda
+  If KeyDown(106) Then MoverPala(pala_x + 9)      ; flecha derecha
+  If KeyHit(57) Or MouseHit(1) Then Lanzar()      ; espacio o clic
+  If KeyHit(49)                                   ; N: partida nueva
+    vidas = 3 : puntos = 0
+    Empezar(1)
+    aviso$ = "Partida nueva"
+    aviso_hasta = MilliSecs() + 2000
+  EndIf
+  If KeyHit(1) Then salir = 1                     ; Esc
+  If perdido = 1 And KeyHit(28)                   ; Intro tras perder
+    vidas = 3 : puntos = 0
+    Empezar(1)
+  EndIf
+End Function
+
+Function ColorLadrillo(fila, dureza)
+  If dureza >= 3 Then Color 210, 70, 80 : Return 0
+  If dureza = 2 Then Color 230, 160, 60 : Return 0
+  If fila = 2 Then Color 240, 205, 70 : Return 0
+  If fila = 3 Then Color 90, 190, 110 : Return 0
+  If fila = 4 Then Color 70, 160, 220 : Return 0
+  Color 150, 120, 220
+  Return 0
+End Function
+
+Function Ladrillo(x, y, dureza)
+  Local px, py
+  px = LAD_X0 + x * LAD_ANCHO
+  py = LAD_Y0 + y * LAD_ALTO
+  ColorLadrillo(y, dureza)
+  Rect px + 1, py + 1, LAD_ANCHO - 3, LAD_ALTO - 3, 1
+  Color 255, 255, 255                       ; brillo arriba y a la izquierda
+  Rect px + 1, py + 1, LAD_ANCHO - 3, 2, 1
+  Rect px + 1, py + 1, 2, LAD_ALTO - 3, 1
+  Color 20, 22, 30                          ; sombra abajo y a la derecha
+  Rect px + 1, py + LAD_ALTO - 4, LAD_ANCHO - 3, 2, 1
+  Rect px + LAD_ANCHO - 4, py + 1, 2, LAD_ALTO - 3, 1
+  Return 0
+End Function
+
+Function Pala()
+  Local px
+  px = pala_x
+  Color 70, 130, 210
+  Rect px, PALA_Y, PALA_ANCHO, PALA_ALTO, 1
+  Color 140, 190, 250                       ; brillo
+  Rect px, PALA_Y, PALA_ANCHO, 3, 1
+  Color 230, 240, 255                       ; los topes
+  Rect px, PALA_Y, 8, PALA_ALTO, 1
+  Rect px + PALA_ANCHO - 8, PALA_Y, 8, PALA_ALTO, 1
+  Color 30, 60, 110                         ; sombra
+  Rect px, PALA_Y + PALA_ALTO - 3, PALA_ANCHO, 3, 1
+  Return 0
+End Function
+
+Function Pintar()
+  Local x, y, i
+  Cls
+  ; el marco
+  Color 40, 46, 60
+  Rect 8, 40, ANCHO - 16, ALTO - 44, 0
+  Color 26, 30, 40
+  Rect 10, 42, ANCHO - 20, 2, 1
+  ; el marcador
+  Color 230, 234, 244
+  Text 16, 14, "Puntos: " + RSet$(Str$(puntos), 6)
+  Text 250, 14, "Nivel: " + Str$(nivel)
+  Text 360, 14, "Ladrillos: " + Str$(quedan)
+  For i = 1 To vidas
+    DrawImage img_vida, ANCHO - 40 - (i - 1) * 30, 8
+  Next
+  ; los ladrillos
+  For y = 0 To FILAS - 1
+    For x = 0 To COLS - 1
+      If ladrillo(x, y) > 0 Then Ladrillo(x, y, ladrillo(x, y))
+    Next
+  Next
+  Pala()
+  DrawImage img_bola, bx# - RADIO, by# - RADIO      ; centrada en la bola de verdad
+  ; avisos
+  If perdido = 1
+    Color 240, 90, 90
+    Text ANCHO / 2 - 90, ALTO / 2 - 10, "SE ACABO -- " + Str$(puntos) + " puntos"
+    Color 160, 166, 178
+    Text ANCHO / 2 - 80, ALTO / 2 + 16, "Intro para otra partida"
+  ElseIf ganado = 1
+    Color 120, 220, 140
+    Text ANCHO / 2 - 70, ALTO / 2 - 10, "NIVEL SUPERADO"
+  ElseIf MilliSecs() < aviso_hasta
+    Color 200, 206, 220
+    Text ANCHO / 2 - 110, ALTO - 24, aviso$
+  Else
+    Color 90, 96, 110
+    Text 12, ALTO + 14, "Raton o flechas: mover   Espacio: lanzar   N: nueva   Esc: salir"
+  EndIf
+  Return 0
+End Function

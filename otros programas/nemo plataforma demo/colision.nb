@@ -1,0 +1,264 @@
+; colision.nb - colision de un rectangulo contra un mapa de tiles.
+; Para incluir con:  Include "colision.nb"
+;
+; QUE ESPERA del programa que la incluye (todo global, que es como
+; funcionan las variables de Nemo Basic fuera de Local):
+;   TILE            tamaño del tile en pixeles (16)
+;   MAPA_W, MAPA_H  tamaño del mapa en tiles
+;   mapa(x, y)      numero de celda de la hoja en cada casilla
+;
+; QUE DEJA:
+;   col_toco        1 si el ultimo MueveX/MueveY choco, 0 si no
+;
+; Los bordes izquierdo y derecho del mapa son PARED; por arriba y por
+; abajo se puede salir (asi un enemigo puede caerse del nivel).
+;
+; OJO con los nombres: dentro de una funcion, todo lo que no sea
+; parametro es GLOBAL en Nemo Basic. Por eso las variables internas
+; llevan prefijo (co_, rs_, mx_...): si se llamaran x o i, pisarian las
+; del bucle que llama y el fallo seria dificilisimo de ver.
+
+; Lo que esta biblioteca comparte con el programa. Declararlo apaga el
+; aviso del compilador y, sobre todo, deja escrito el contrato: estas
+; tres las pone quien incluye el archivo; col_toco lo devuelve ella.
+Global TILE
+Global MAPA_W
+Global MAPA_H
+Global col_toco
+
+; ---------------------------------------------------------------
+; Que tiles frenan. Cambia estas dos funciones y cambia el nivel.
+; ---------------------------------------------------------------
+Function EsSolido(co_t)
+  If co_t = 1
+    Return 1
+  EndIf
+  If co_t = 2
+    Return 1
+  EndIf
+  If co_t = 3
+    Return 1
+  EndIf
+  If co_t = 4
+    Return 1
+  EndIf
+  If co_t = 5
+    Return 1
+  EndIf
+  If co_t = 17
+    Return 1
+  EndIf
+  If co_t = 18
+    Return 1
+  EndIf
+  If co_t = 19
+    Return 1
+  EndIf
+  Return 0
+End Function
+
+; Plataformas de madera: se atraviesan desde abajo y por los lados, y
+; solo frenan cuando se cae encima. Es lo que hace que un plataformas
+; se sienta como un plataformas.
+Function EsPlataforma(pl_t)
+  If pl_t = 6
+    Return 1
+  EndIf
+  If pl_t = 7
+    Return 1
+  EndIf
+  If pl_t = 8
+    Return 1
+  EndIf
+  Return 0
+End Function
+
+; ---------------------------------------------------------------
+; Consultas basicas
+; ---------------------------------------------------------------
+
+; Tile de una casilla, con los bordes controlados. Fuera del mapa por
+; los lados devuelve roca (pared); por arriba y por abajo, cielo.
+Function TileSeguro(ts_tx, ts_ty)
+  If ts_tx < 0
+    Return 4
+  EndIf
+  If ts_tx >= MAPA_W
+    Return 4
+  EndIf
+  If ts_ty < 0
+    Return 0
+  EndIf
+  If ts_ty >= MAPA_H
+    Return 0
+  EndIf
+  Return mapa(ts_tx, ts_ty)
+End Function
+
+; ¿Hay tile solido en ese pixel? Cuidado con la division de enteros:
+; en Nemo Basic trunca HACIA CERO, asi que -1 / 16 da 0 y no -1. Por
+; eso las coordenadas negativas se atajan antes de dividir.
+Function SolidoEnPixel(sp_x, sp_y)
+  If sp_x < 0
+    Return 1
+  EndIf
+  If sp_x >= MAPA_W * TILE
+    Return 1
+  EndIf
+  If sp_y < 0
+    Return 0
+  EndIf
+  If sp_y >= MAPA_H * TILE
+    Return 0
+  EndIf
+  Return EsSolido(mapa(sp_x / TILE, sp_y / TILE))
+End Function
+
+; ¿El rectangulo pisa algun tile solido? Se mira una muestra por tile
+; (avanzando de TILE en TILE) mas el borde derecho e inferior, asi que
+; vale para rectangulos de cualquier tamaño, no solo menores que un tile.
+Function RectSolido(rs_x, rs_y, rs_w, rs_h)
+  rs_fy = rs_y
+  While rs_fy < rs_y + rs_h
+    rs_fx = rs_x
+    While rs_fx < rs_x + rs_w
+      If SolidoEnPixel(rs_fx, rs_fy) = 1
+        Return 1
+      EndIf
+      rs_fx = rs_fx + TILE
+    Wend
+    If SolidoEnPixel(rs_x + rs_w - 1, rs_fy) = 1
+      Return 1
+    EndIf
+    rs_fy = rs_fy + TILE
+  Wend
+  rs_fx = rs_x
+  While rs_fx < rs_x + rs_w
+    If SolidoEnPixel(rs_fx, rs_y + rs_h - 1) = 1
+      Return 1
+    EndIf
+    rs_fx = rs_fx + TILE
+  Wend
+  If SolidoEnPixel(rs_x + rs_w - 1, rs_y + rs_h - 1) = 1
+    Return 1
+  EndIf
+  Return 0
+End Function
+
+; ¿Los pies aterrizan sobre una plataforma atravesable? Solo frena si
+; ANTES estaban por encima del borde superior de esa fila de tiles:
+; si ya se estaba dentro, se sigue cayendo (se salto desde abajo).
+Function PisaPlataforma(pp_x, pp_y, pp_w, pp_h, pp_nueva)
+  pp_pie = pp_nueva + pp_h - 1
+  pp_pie_antes = pp_y + pp_h - 1
+  If pp_pie < 0
+    Return 0
+  EndIf
+  pp_fila = pp_pie / TILE
+  If pp_fila >= MAPA_H
+    Return 0
+  EndIf
+  If pp_pie_antes >= pp_fila * TILE
+    Return 0
+  EndIf
+  pp_fx = pp_x
+  While pp_fx < pp_x + pp_w
+    If EsPlataforma(TileSeguro(pp_fx / TILE, pp_fila)) = 1
+      Return 1
+    EndIf
+    pp_fx = pp_fx + TILE
+  Wend
+  If EsPlataforma(TileSeguro((pp_x + pp_w - 1) / TILE, pp_fila)) = 1
+    Return 1
+  EndIf
+  Return 0
+End Function
+
+; ---------------------------------------------------------------
+; Movimiento: un eje cada vez, pixel a pixel.
+;
+; Separar los ejes es lo que evita el clasico "me quedo enganchado en
+; la esquina": si se moviera en diagonal de golpe habria que decidir
+; por cual de los dos lados se sale, y siempre se acierta a medias.
+; Y avanzar de pixel en pixel, en vez de saltar al destino y luego
+; encajar, hace imposible atravesar una pared fina por ir rapido.
+; ---------------------------------------------------------------
+Function MueveX(mx_x, mx_y, mx_w, mx_h, mx_dx)
+  col_toco = 0
+  If mx_dx = 0
+    Return mx_x
+  EndIf
+  mx_paso = 1
+  If mx_dx < 0
+    mx_paso = -1
+  EndIf
+  mx_n = Abs(mx_dx)
+  mx_i = 0
+  While mx_i < mx_n
+    If RectSolido(mx_x + mx_paso, mx_y, mx_w, mx_h) = 1
+      col_toco = 1
+      Return mx_x
+    EndIf
+    mx_x = mx_x + mx_paso
+    mx_i = mx_i + 1
+  Wend
+  Return mx_x
+End Function
+
+Function MueveY(my_x, my_y, my_w, my_h, my_dy)
+  col_toco = 0
+  If my_dy = 0
+    Return my_y
+  EndIf
+  my_paso = 1
+  If my_dy < 0
+    my_paso = -1
+  EndIf
+  my_n = Abs(my_dy)
+  my_i = 0
+  While my_i < my_n
+    my_nueva = my_y + my_paso
+    my_bloq = RectSolido(my_x, my_nueva, my_w, my_h)
+    If my_bloq = 0
+      If my_paso > 0
+        my_bloq = PisaPlataforma(my_x, my_y, my_w, my_h, my_nueva)
+      EndIf
+    EndIf
+    If my_bloq = 1
+      col_toco = 1
+      Return my_y
+    EndIf
+    my_y = my_nueva
+    my_i = my_i + 1
+  Wend
+  Return my_y
+End Function
+
+; ¿Hay suelo justo DELANTE de los pies? Para que un bicho que patrulla
+; se de la vuelta en el borde de su plataforma en vez de caerse.
+; Se mira UN pixel, el de delante del pie, no una caja entera: con una
+; caja desplazada, el borde de la caja sobresale por delante del bicho y
+; la vuelta se da antes de tiempo -- y a veces se vuelve a dar enseguida,
+; con lo que el bicho se queda temblando en el sitio.
+; sf_dir es 1 hacia la derecha, -1 hacia la izquierda.
+Function SueloDelante(sf_x, sf_y, sf_w, sf_h, sf_dir)
+  sf_px = sf_x + sf_w
+  If sf_dir < 0
+    sf_px = sf_x - 1
+  EndIf
+  sf_py = sf_y + sf_h
+  If SolidoEnPixel(sf_px, sf_py) = 1
+    Return 1
+  EndIf
+  Return EsPlataforma(TileSeguro(sf_px / TILE, sf_py / TILE))
+End Function
+
+; ¿Hay suelo justo debajo? Para saber si se puede saltar. Se comprueba
+; moviendo un pixel hacia abajo con las mismas reglas del movimiento,
+; asi las plataformas atravesables cuentan igual que el suelo.
+Function EnSuelo(es_x, es_y, es_w, es_h)
+  If RectSolido(es_x, es_y + 1, es_w, es_h) = 1
+    Return 1
+  EndIf
+  Return PisaPlataforma(es_x, es_y, es_w, es_h, es_y + 1)
+End Function

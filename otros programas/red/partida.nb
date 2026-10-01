@@ -1,0 +1,204 @@
+; ---------------------------------------------------------------
+; PARTIDA.NB -- dos o mas Nemo OS jugando en la misma red.
+;
+;   Flechas: mover el cuadrado propio      Esc: salir
+;
+; No es un juego: es el ESQUELETO de uno. Hace las tres cosas que todo
+; multijugador tiene que hacer y que son las que cuesta acertar:
+;
+;   1. Encontrar a los demas sin conocer sus direcciones.
+;   2. Mandar la propia posicion sin parar.
+;   3. Recibir la de los demas SABIENDO DE QUIEN ES CADA UNA.
+;
+; Se arranca en dos maquinas y ya esta: no hay servidor, no hay que
+; teclear ninguna IP. Las flechas mueven el cuadrado propio; los de los
+; demas aparecen solos.
+;
+; POR QUE UDP Y NO TCP. Un juego manda "estoy aqui" muchas veces por
+; segundo a varias maquinas. Con TCP serian varias conexiones que
+; mantener, y un paquete perdido pararia los siguientes hasta
+; retransmitirlo -- justo lo que no quieres, porque para cuando llegara
+; ya estaria viejo. Con UDP, un paquete perdido es una posicion perdida y
+; la siguiente llega en unos milisegundos. Ademas, en Nemo OS solo hay UN
+; cliente TCP en todo el sistema; UDP admite cuatro sockets a la vez
+; porque no hay nada que mantener.
+; ---------------------------------------------------------------
+
+Include "red.nb"
+
+Global PUERTO, ANCHO, ALTO, MAX_OTROS
+PUERTO = 7000
+ANCHO = 480 : ALTO = 320
+MAX_OTROS = 8
+
+; Los demas jugadores. Se identifican por su IP en texto, que es lo que
+; devuelve UdpFrom$.
+Dim otro$(7)
+Dim otro_x(7)
+Dim otro_y(7)
+Dim otro_visto(7)        ; MilliSecs de la ultima vez que dijo algo
+
+Global h, x, y, n_otros, ahora, i, k, m$, quien$, corte, salir
+Global yo$
+
+x = 100 : y = 100
+n_otros = 0
+salir = 0
+
+; ---------------------------------------------------------------
+; Antes de nada: esta la red en pie?
+;
+; Pedir un socket o mandar algo mientras el DHCP sigue negociando no da
+; error -- simplemente nada llega a ninguna parte, que es la forma mas
+; confusa posible de fallar. De ahi que NetReady() sea la primera linea.
+; ---------------------------------------------------------------
+If NetReady() = 0 Then
+  Print "La red no esta lista todavia. Espera a que arranque y vuelve a probar."
+  End
+EndIf
+
+yo$ = NetIp$()
+Print "soy " + yo$ + "   (mascara " + NetMask$() + ")"
+
+h = UdpOpen(PUERTO)
+If h < 0 Then
+  Print "No se pudo abrir el puerto " + Str$(PUERTO)
+  ; Los tres motivos, dichos con nombre: un -1 a secas manda a leer el
+  ; codigo del kernel para entender que pasa.
+  If h = -1 Then Print "No quedan sockets libres (caben cuatro en todo el sistema)."
+  If h = -2 Then Print "Ese puerto ya esta abierto: hay otro programa usandolo."
+  If h = -3 Then Print "Ese puerto es del sistema (el 68 es del DHCP)."
+  End
+EndIf
+
+Graphics ANCHO, ALTO
+ClsColor 20, 24, 32
+
+; ---------------------------------------------------------------
+; Presentarse A TODA LA RED
+;
+; Aqui esta la gracia: no sabemos si hay alguien ni donde esta, asi que
+; se grita. Quien lo oiga contestara, y de su contestacion sacamos su IP.
+; Sin esto habria que teclear la direccion del otro jugador a mano, que
+; es lo que convierte "jugar con mi hermano" en una tarde de configurar.
+; ---------------------------------------------------------------
+UdpGritar(h, PUERTO, "HOLA")
+
+While salir = 0
+  Mandos()
+  Escuchar()
+  Pintar()
+  ; 16 ms: unas 60 vueltas por segundo, igual que el arkanoid. Cada
+  ; vuelta manda un paquete, o sea 60 por segundo y por maquina -- que
+  ; para cuarenta bytes no es nada.
+  Delay 16
+Wend
+UdpClose h
+End
+
+; ---------------------------------------------------------------
+Function Mandos()
+  If KeyDown(103) Then y = y - 4      ; flecha arriba
+  If KeyDown(108) Then y = y + 4      ; flecha abajo
+  If KeyDown(105) Then x = x - 4      ; flecha izquierda
+  If KeyDown(106) Then x = x + 4      ; flecha derecha
+  If KeyHit(1) Then salir = 1         ; Esc
+  If x < 0 Then x = 0
+  If y < 0 Then y = 0
+  If x > ANCHO - 20 Then x = ANCHO - 20
+  If y > ALTO - 20 Then y = ALTO - 20
+
+  ; Decir donde estoy, A TODA LA RED. Con dos o tres jugadores da igual;
+  ; con ocho, mandar uno a cada uno son ocho paquetes para decir lo
+  ; mismo. Y asi se entera tambien el que acaba de entrar.
+  ;
+  ; No se mira el resultado A PROPOSITO: la primera vez devolvera -3
+  ; (falta resolver la MAC por ARP) y ese paquete se pierde. No importa
+  ; -- el siguiente sale 16 ms despues, y una posicion de hace 16 ms no
+  ; le hace falta a nadie. Esto es justo lo que UDP te deja hacer y TCP
+  ; no.
+  UdpGritar(h, PUERTO, "EN " + Str$(x) + " " + Str$(y))
+End Function
+
+; ---------------------------------------------------------------
+Function Escuchar()
+  ; SE VACIA LA COLA ENTERA en cada vuelta, no un datagrama. Leyendo uno
+  ; por vuelta, con tres jugadores mandando a la vez la cola crece mas
+  ; rapido de lo que se vacia: al llenarse se tiran los que llegan
+  ; (UdpLost los cuenta) y se ve a los demas moverse a tirones. No da
+  ; ningun error; solo va mal.
+  ;
+  ; Y la condicion del bucle es UdpPending, no otra cosa. La primera
+  ; version preguntaba "UdpFromPort = 0" para saber si quedaba algo, y NO
+  ; TERMINABA NUNCA: el remitente se queda enganchado en el ultimo leido,
+  ; asi que en cuanto llegaba el primer mensaje la condicion ya no se
+  ; cumplia jamas y el juego se colgaba.
+  While UdpPending(h) > 0
+    m$ = UdpRecv$(h)
+    ; De quien era ESTE datagrama. Se pregunta AQUI, pegado al UdpRecv$
+    ; que lo trajo: UdpFrom$ se refiere al ultimo LEIDO, y en cuanto se
+    ; lee otro cambia. Guardarlo para "despues" es como se acaba
+    ; contestandole al jugador equivocado -- y eso no da ningun error,
+    ; solo hace que el otro vea cosas raras.
+    quien$ = UdpFrom$(h)
+    ; Lo nuestro nos vuelve: un mensaje por difusion se entrega tambien a
+    ; quien lo manda. Se reconoce porque la IP es la propia.
+    If quien$ <> yo$ Then Atender(quien$, m$)
+  Wend
+End Function
+
+Function Atender(quien$, m$)
+  Local j
+  k = -1
+  For j = 0 To n_otros - 1
+    If otro$(j) = quien$ Then k = j
+  Next
+  If k < 0 And n_otros < MAX_OTROS Then
+    k = n_otros
+    otro$(k) = quien$
+    n_otros = n_otros + 1
+    ; A un recien llegado se le contesta DIRECTAMENTE, no a gritos: asi
+    ; sabe nuestra direccion en el acto y no tiene que esperar a que le
+    ; llegue el siguiente anuncio.
+    UdpResponder(h, "EN " + Str$(x) + " " + Str$(y))
+  EndIf
+  If k < 0 Then Return
+
+  otro_visto(k) = MilliSecs()
+  If Left$(m$, 3) = "EN " Then
+    corte = Instr(m$, " ", 4)
+    If corte > 0 Then
+      otro_x(k) = Val(Mid$(m$, 4, corte - 4))
+      otro_y(k) = Val(Mid$(m$, corte + 1, 8))
+    EndIf
+  EndIf
+End Function
+
+; ---------------------------------------------------------------
+Function Pintar()
+  Local j
+  Cls
+  ahora = MilliSecs()
+  For j = 0 To n_otros - 1
+    ; A quien lleva tres segundos callado se le deja de pintar. Con UDP
+    ; no hay ningun aviso de que alguien se ha ido: la unica senal es que
+    ; deja de hablar. Sin esto, un jugador que cierra la ventana se queda
+    ; para siempre clavado en la pantalla de los demas.
+    If ahora - otro_visto(j) < 3000 Then
+      Color 90, 140, 220
+      Rect otro_x(j), otro_y(j), 20, 20, 1
+      Color 150, 175, 215
+      Text otro_x(j), otro_y(j) - 14, otro$(j)
+    EndIf
+  Next
+
+  Color 240, 200, 90
+  Rect x, y, 20, 20, 1
+
+  Color 150, 150, 150
+  Text 6, ALTO - 34, "yo: " + yo$ + "    otros: " + Str$(n_otros)
+  ; Los datagramas tirados por no vaciar a tiempo. Se ensena a proposito:
+  ; si esto crece, el bucle no va lo bastante rapido -- y es mejor verlo
+  ; aqui que adivinarlo mirando cuadrados que se mueven raro.
+  Text 6, ALTO - 18, "perdidos: " + Str$(UdpLost(h))
+End Function

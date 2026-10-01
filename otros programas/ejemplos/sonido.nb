@@ -1,0 +1,48 @@
+; sonido.nb -- los seis comandos de sonido de Nemo Basic.
+;
+; Solo suena en la Raspberry Pi 4: el jack de 3,5 mm va por PWM, y la maquina
+; 'virt' de QEMU no tiene ese hardware. En QEMU compila y corre, pero calla.
+;
+; Necesita un WAV en la tarjeta (PCM de 16 bits). Si todavia no tienes
+; ninguno, el programa Lua prueba_sonido.lua fabrica TONO.WAV y lo deja en su
+; sitio: ejecutalo una vez y vuelve aqui.
+;
+; Lo que conviene saber, y esta explicado en REFERENCIA_NEMO_BASIC_3.md
+; (seccion 11.4):
+;   - PlaySound ESPERA a que el sonido acabe. Mientras suena, esto no avanza
+;     (pero el resto del sistema si: la pantalla y el raton siguen vivos).
+;   - Un sonido a la vez: un PlaySound mientras suena otro se descarta.
+;   - El volumen, el pan y la frecuencia se ponen ANTES de PlaySound: se
+;     guardan en el sonido, no en un canal, asi que cambiarlos despues de que
+;     PlaySound haya vuelto no se oye.
+
+Console
+
+archivo$ = "TONO.WAV"
+
+s = LoadSound(archivo$)
+If s < 0 Then
+  Print "No se pudo cargar " + archivo$
+  Print "Comprueba que el archivo esta en la tarjeta y que es un WAV"
+  Print "de 16 bits. prueba_sonido.lua fabrica uno."
+Else
+  Print "Cargado: " + archivo$ + " (sonido " + Str$(s) + ")"
+
+  Print "1) a la mitad de volumen, centrado"
+  SoundVolume s, 0.5
+  SoundPan s, 0.0
+  PlaySound s
+
+  Print "2) a todo volumen, a la izquierda"
+  SoundVolume s, 1.0
+  SoundPan s, -1.0
+  PlaySound s
+
+  Print "3) a la derecha, y mas grave (22050 en vez de 44100)"
+  SoundPan s, 1.0
+  SoundPitch s, 22050
+  PlaySound s
+
+  FreeSound s
+  Print "Listo."
+EndIf

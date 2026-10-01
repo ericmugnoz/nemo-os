@@ -1,0 +1,27 @@
+; t10.nb -- prueba de Line: abanico, marco y aspa
+
+Graphics 400, 300
+Cls
+
+; abanico desde la esquina superior izquierda
+For i = 0 To 12
+  Color 40 + i * 15, 120, 255 - i * 15
+  Line 0, 0, i * 33, 299
+Next
+
+; marco blanco alrededor de todo
+Color 255, 255, 255
+Line 0, 0, 399, 0
+Line 399, 0, 399, 299
+Line 399, 299, 0, 299
+Line 0, 299, 0, 0
+
+; aspa amarilla en el centro
+Color 255, 220, 0
+Line 150, 100, 250, 200
+Line 250, 100, 150, 200
+
+Color 255, 255, 255
+Text 10, 280, "Line: Bresenham generado"
+
+Delay 4000

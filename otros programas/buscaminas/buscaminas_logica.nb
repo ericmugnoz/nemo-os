@@ -1,0 +1,117 @@
+; ---------------------------------------------------------------
+; La logica del Buscaminas: el tablero, las minas, la cuenta de
+; vecinas y el destape en cadena. Sin nada de pantalla ni raton,
+; para poder usarla sin la parte grafica.
+;
+; Lo usa buscaminas.nb con:  Include "buscaminas_logica.nb"
+;
+; Cada casilla guarda:  mina(x, y)   1 si hay mina
+;                       vista(x, y)  1 si esta destapada
+;                       marca(x, y)  1 si tiene bandera
+;                       cuenta(x, y) minas alrededor (0 a 8)
+; ---------------------------------------------------------------
+Global ANCHO, ALTO, MINAS
+ANCHO = 16 : ALTO = 16 : MINAS = 40
+
+Global tapadas, banderas, perdido, ganado, semilla, primera
+Dim mina(15, 15)
+Dim vista(15, 15)
+Dim marca(15, 15)
+Dim cuenta(15, 15)
+
+Function Azar(n)                 ; de 0 a n-1, y repetible con la misma semilla
+  semilla = (semilla * 1103515245 + 12345) Mod 2147483648
+  Return (semilla / 65536) Mod n
+End Function
+
+Function Empezar()
+  Local x, y
+  For y = 0 To ALTO - 1
+    For x = 0 To ANCHO - 1
+      mina(x, y) = 0 : vista(x, y) = 0 : marca(x, y) = 0 : cuenta(x, y) = 0
+    Next
+  Next
+  tapadas = ANCHO * ALTO
+  banderas = 0
+  perdido = 0
+  ganado = 0
+  primera = 1                    ; las minas se ponen tras el primer clic
+End Function
+
+; Las minas, evitando la casilla del primer clic y sus vecinas: la primera
+; jugada nunca pierde, y casi siempre abre un hueco grande.
+Function PonerMinas(sx, sy)
+  Local puestas, x, y
+  puestas = 0
+  While puestas < MINAS
+    x = Azar(ANCHO)
+    y = Azar(ALTO)
+    If mina(x, y) = 0 And (Abs(x - sx) > 1 Or Abs(y - sy) > 1)
+      mina(x, y) = 1
+      puestas = puestas + 1
+    EndIf
+  Wend
+  For y = 0 To ALTO - 1
+    For x = 0 To ANCHO - 1
+      cuenta(x, y) = Vecinas(x, y)
+    Next
+  Next
+  primera = 0
+End Function
+
+Function Vecinas(x, y)
+  Local dx, dy, n, vx, vy
+  n = 0
+  For dy = -1 To 1
+    For dx = -1 To 1
+      vx = x + dx
+      vy = y + dy
+      If vx >= 0 And vx < ANCHO And vy >= 0 And vy < ALTO
+        If mina(vx, vy) = 1 Then n = n + 1
+      EndIf
+    Next
+  Next
+  Return n
+End Function
+
+; Destapar: si la casilla no tiene minas alrededor, sigue por sus vecinas
+; (se llama a si misma). Devuelve 1 si habia mina.
+Function Destapar(x, y)
+  Local dx, dy, vx, vy
+  If x < 0 Or x >= ANCHO Or y < 0 Or y >= ALTO Then Return 0
+  If vista(x, y) = 1 Or marca(x, y) = 1 Then Return 0
+  If primera = 1 Then PonerMinas(x, y)
+  vista(x, y) = 1
+  tapadas = tapadas - 1
+  If mina(x, y) = 1
+    perdido = 1
+    Return 1
+  EndIf
+  If cuenta(x, y) = 0
+    For dy = -1 To 1
+      For dx = -1 To 1
+        If dx <> 0 Or dy <> 0
+          vx = x + dx
+          vy = y + dy
+          If vx >= 0 And vx < ANCHO And vy >= 0 And vy < ALTO
+            If vista(vx, vy) = 0 Then Destapar(vx, vy)
+          EndIf
+        EndIf
+      Next
+    Next
+  EndIf
+  If tapadas = MINAS Then ganado = 1
+  Return 0
+End Function
+
+Function Marcar(x, y)
+  If vista(x, y) = 1 Then Return 0
+  If marca(x, y) = 1
+    marca(x, y) = 0
+    banderas = banderas - 1
+  Else
+    marca(x, y) = 1
+    banderas = banderas + 1
+  EndIf
+  Return 1
+End Function

@@ -1,0 +1,148 @@
+; ---------------------------------------------------------------
+; TETRIS para Nemo OS, en Nemo Basic
+;
+;   Flechas: mover y bajar   Arriba o Z: girar   Espacio: soltar
+;   P: pausa                 Esc: salir
+;
+; Las puntuaciones se guardan en tetris.txt, junto al programa.
+; ---------------------------------------------------------------
+Include "tetris_logica.nb"
+
+Graphics 460, 620
+
+Global LADO, OX, OY
+LADO = 26 : OX = 20 : OY = 40
+
+CargarFormas()
+
+semilla = MilliSecs()
+CargarPuntuaciones()
+Nueva()
+
+Global ultimo
+ultimo = MilliSecs()
+
+While Not perdido
+  Teclas()
+  If MilliSecs() - ultimo > 600 - nivel * 40
+    ultimo = MilliSecs()
+    If Not Baja() Then Asentar()
+  EndIf
+  Pintar()
+  Delay 16
+Wend
+
+PedirNombre()
+GuardarPuntuaciones()
+PintarTabla()
+While Not KeyHit(1)
+  Delay 40
+Wend
+End
+
+; ---- teclado ----
+
+Function Teclas()
+  Local ng
+  If KeyHit(105) And Not Choca(px - 1, py, giro) Then px = px - 1      ; izquierda
+  If KeyHit(106) And Not Choca(px + 1, py, giro) Then px = px + 1      ; derecha
+  If KeyHit(108) Then Baja()                                          ; abajo
+  If KeyHit(103) Or KeyHit(44)                                        ; arriba o Z: girar
+    ng = (giro + 1) Mod 4
+    If Not Choca(px, py, ng) Then giro = ng
+  EndIf
+  If KeyHit(57)                                                       ; espacio: soltar
+    While Baja()
+    Wend
+    Asentar()
+  EndIf
+  If KeyHit(25)                                                       ; P: pausa
+    Color 240, 240, 240
+    Text 150, 300, "EN PAUSA -- pulsa P"
+    While Not KeyHit(25)
+      Delay 40
+    Wend
+  EndIf
+  If KeyHit(1) Then perdido = 1                                       ; Esc
+End Function
+
+; ---- dibujo ----
+
+Function ColorPieza(p)
+  If p = 1 Then Color 60, 200, 220
+  If p = 2 Then Color 70, 100, 220
+  If p = 3 Then Color 230, 150, 50
+  If p = 4 Then Color 230, 210, 60
+  If p = 5 Then Color 80, 200, 90
+  If p = 6 Then Color 190, 90, 200
+  If p = 7 Then Color 220, 70, 70
+End Function
+
+Function Cuadro(x, y)
+  Rect x, y, LADO - 2, LADO - 2, 1
+End Function
+
+Function Pintar()
+  Local i, x, y
+  Color 18, 20, 26
+  Cls
+  Color 40, 44, 54
+  Rect OX - 2, OY - 2, ANCHO * LADO + 4, ALTO * LADO + 4, 0
+  For y = 0 To ALTO - 1
+    For x = 0 To ANCHO - 1
+      If tablero(x, y) > 0
+        ColorPieza(tablero(x, y))
+        Cuadro(OX + x * LADO, OY + y * LADO)
+      EndIf
+    Next
+  Next
+  ColorPieza(pieza)
+  For i = 0 To 15
+    If Celda(pieza, giro, i) <> 46
+      Cuadro(OX + (px + (i Mod 4)) * LADO, OY + (py + (i / 4)) * LADO)
+    EndIf
+  Next
+  Color 230, 230, 235
+  Text 300, 50, "Puntos"
+  Text 300, 70, Str$(puntos)
+  Text 300, 110, "Lineas: " + Str$(lineas)
+  Text 300, 130, "Nivel: " + Str$(nivel)
+  Text 300, 170, "Siguiente"
+  ColorPieza(siguiente)
+  For i = 0 To 15
+    If Celda(siguiente, 0, i) <> 46
+      Cuadro(300 + (i Mod 4) * LADO, 190 + (i / 4) * LADO)
+    EndIf
+  Next
+  Color 150, 156, 166
+  Text 300, 330, "Flechas: mover"
+  Text 300, 350, "Arriba: girar"
+  Text 300, 370, "Espacio: soltar"
+  Text 300, 390, "P: pausa"
+  Text 300, 410, "Esc: salir"
+  Color 120, 126, 136
+  Text 300, 450, "Mejores:"
+  For i = 0 To 4
+    If mejor_puntos(i) > 0
+      Text 300, 470 + i * 18, LSet$(mejor_nombre$(i), 8) + Str$(mejor_puntos(i))
+    EndIf
+  Next
+End Function
+
+Function PintarTabla()
+  Local i
+  Color 18, 20, 26
+  Cls
+  Color 230, 230, 235
+  Text 120, 60, "MEJORES PUNTUACIONES"
+  For i = 0 To 9
+    If mejor_puntos(i) > 0
+      Color 200, 200, 210
+      If mejor_puntos(i) = puntos And mejor_nombre$(i) <> "" Then Color 240, 220, 80
+      Text 120, 110 + i * 26, RSet$(Str$(i + 1), 2) + ".  " + LSet$(mejor_nombre$(i), 10) + RSet$(Str$(mejor_puntos(i)), 7)
+    EndIf
+  Next
+  Color 150, 156, 166
+  Text 120, 420, "Esc para salir"
+End Function
+

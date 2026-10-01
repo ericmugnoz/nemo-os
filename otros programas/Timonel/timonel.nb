@@ -1,0 +1,572 @@
+; timonel.nb -- un entorno de programacion para Nemo OS, al estilo de
+; Visual Studio Code, escrito en Nemo Basic.
+;
+; FASE 2: editor propio, dibujado a mano sobre un lienzo.
+;
+; La fase 1 usaba el TextArea del kernel, que ya sabia teclear y borrar y
+; por eso se pudo usar desde el primer dia. Pero tenia dos techos que en un
+; editor que DESPUES GUARDA son perdida de datos, no incomodidad:
+;
+;   - guarda como mucho 200 lineas y, al llenarse, descarta la mas antigua:
+;     se come el principio del archivo;
+;   - parte solas las lineas que no caben a lo ancho, guardando el salto de
+;     verdad: reformatea el archivo al guardarlo.
+;
+; Y ademas pinta de un solo color, asi que no habia forma de tener numeros
+; de linea ni coloreado.
+;
+; Ahora el texto vive en un array de lineas de este programa, se dibuja
+; entero aqui, y no hay ningun tope salvo MAX_LINEAS. Timonel ya puede
+; abrirse a si mismo.
+;
+; Lo que sigue pendiente, anotado para no venderlo como hecho: el minimapa,
+; y que las letras con tilde cuentan por dos columnas (ReadChar entrega
+; bytes, y en UTF-8 una tilde son dos). Se escriben y se guardan bien; solo
+; el numero de columna de la barra de estado y el sitio del cursor se van
+; en esas lineas.
+;
+; El nombre: el timonel es quien lleva el rumbo. Sigue la familia del
+; Nautilus, Aronnax y el Navegante.
+
+; El tamaño de ARRANQUE. A partir de ahi manda la ventana: al maximizarla
+; o estirarla, Recolocar() reparte de nuevo con las medidas reales que dan
+; ClientWidth y ClientHeight. Por eso estas dos son lo unico fijo.
+Const ANCHO_INI = 900
+Const ALTO_INI  = 620
+
+Const ACT_W    = 44              ; barra de actividad
+Const LADO_W   = 216             ; explorador
+Const EDITOR_X = ACT_W + LADO_W
+Const ESTADO_H = 24
+Const PEST_H   = 26
+
+Const MARGEN = 46                ; ancho de la columna de numeros de linea
+Const TEXTO_X = MARGEN + 6
+Const MARGEN_Y = 6               ; aire entre la pestaña y la primera linea
+
+Const MAX_ABIERTOS = 12
+Const MAX_ENTRADAS = 200         ; lo que cabe en el explorador de una vez
+
+; Ordenes de menu. El numero es lo que devuelve EventData().
+Const M_NUEVO    = 1
+Const M_GUARDAR  = 2
+Const M_RECARGAR = 3
+Const M_SALIR    = 4
+Const M_SUBIR    = 5
+Const M_RAIZ     = 6
+
+Global arbol, lienzo, pestanas, est_izq, est_der
+Global act, lado, etiq, estado          ; hacen falta para recolocarlos
+Global v_ancho, v_alto, lz_w, lz_h      ; las medidas de AHORA, no las de arranque
+Global alto_linea = 16                  ; se mide de verdad al arrancar
+Global ancho_letra = 8                  ; ancho aproximado, para el desplazamiento lateral
+Global claves$ = ""
+Global carpeta$ = ""                    ; la carpeta que muestra el explorador
+Global actual$ = ""                     ; el archivo abierto ahora mismo
+Global n_abiertos = 0
+Global n_nodos = 0
+
+Dim abierto$(MAX_ABIERTOS)
+Dim nodo(MAX_ENTRADAS)
+
+Include "timonel_logica.nb"
+
+; ---------------------------------------------------------------
+; El reparto de la ventana
+; ---------------------------------------------------------------
+; Se llama al arrancar y cada vez que la ventana cambia de tamaño. Sin
+; esto, maximizar dejaba la ventana grande y el contenido con las medidas
+; del arranque: media pantalla vacia.
+;
+; Un lienzo no tiene bufer propio -- lo que se dibuja va directo al
+; contenido de la ventana -- asi que cambiarle el rectangulo es todo lo
+; que hace falta para que crezca.
+Function Recolocar()
+  Local w, h
+  w = ClientWidth()
+  h = ClientHeight()
+  ; Un minimo por debajo del cual las cuentas darian negativo.
+  If w < 400 Then w = 400
+  If h < 200 Then h = 200
+  v_ancho = w
+  v_alto = h
+  lz_w = w - EDITOR_X
+  lz_h = h - ESTADO_H - PEST_H
+
+  SetGadgetShape act, 0, 0, ACT_W, h - ESTADO_H
+  SetGadgetShape lado, ACT_W, 0, LADO_W, h - ESTADO_H
+  SetGadgetShape etiq, ACT_W + 10, 6, LADO_W - 20, 16
+  SetGadgetShape arbol, ACT_W + 6, 26, LADO_W - 12, h - ESTADO_H - 32
+  SetGadgetShape pestanas, EDITOR_X, 0, lz_w, PEST_H
+  SetGadgetShape lienzo, EDITOR_X, PEST_H, lz_w, lz_h
+  SetGadgetShape estado, 0, h - ESTADO_H, w, ESTADO_H
+  SetGadgetShape est_izq, 8, h - ESTADO_H + 4, w - 280, 16
+  SetGadgetShape est_der, w - 260, h - ESTADO_H + 4, 250, 16
+
+  visibles = (lz_h - MARGEN_Y) / alto_linea
+  If visibles < 1 Then visibles = 1
+  columnas = (lz_w - TEXTO_X) / ancho_letra
+  If columnas < 10 Then columnas = 10
+
+  SeguirCursor()
+  repintar = 1
+  Return 0
+End Function
+
+; ---------------------------------------------------------------
+; Pintar
+; ---------------------------------------------------------------
+; Dibuja un trozo de codigo normal, palabra a palabra, coloreando las
+; palabras clave y los numeros. Devuelve la x donde se quedo, para que
+; quien llama siga por ahi.
+;
+; Se va palabra a palabra y no letra a letra a proposito: letra a letra
+; serian unas 2800 llamadas por repintado, cada una con su cadena de una
+; letra. Asi son unas diez por linea.
+Function PintarCodigo(x, y, t$)
+  Local desde, esp, palabra$, largo, ini$, cod
+  desde = 1
+  largo = Len(t$)
+  While desde <= largo
+    esp = Instr(t$, " ", desde)
+    If esp = 0 Then esp = largo + 1
+    palabra$ = Mid$(t$, desde, esp - desde)
+    If palabra$ <> "" Then
+      ini$ = Left$(palabra$, 1)
+      cod = Asc(ini$)
+      If cod >= 48 And cod <= 57 Then
+        Color 181, 206, 168                     ; numero
+      ElseIf Instr(claves$, " " + Lower$(palabra$) + " ", 1) > 0 Then
+        Color 86, 156, 214                      ; palabra clave
+      Else
+        Color 212, 212, 212                     ; texto normal
+      EndIf
+      Text x, y, palabra$
+      x = x + TextWidth(palabra$)
+    EndIf
+    If esp <= largo Then x = x + ancho_letra     ; el espacio
+    desde = esp + 1
+  Wend
+  Return x
+End Function
+
+; Una linea entera, partida en tramos: codigo, cadenas entre comillas, y
+; el comentario desde el punto y coma hasta el final. Se recorre de
+; izquierda a derecha buscando el siguiente tramo interesante, en vez de
+; mirar letra por letra.
+Function PintarLinea(y, t$)
+  Local x, pos, largo, pcom, pcad, pfin, trozo$, comilla$
+  x = TEXTO_X
+  largo = Len(t$)
+  pos = 1
+  comilla$ = Chr$(34)
+  While pos <= largo
+    pcom = Instr(t$, ";", pos)
+    pcad = Instr(t$, comilla$, pos)
+
+    ; Nada especial hasta el final: todo es codigo.
+    If pcom = 0 And pcad = 0 Then
+      x = PintarCodigo(x, y, Mid$(t$, pos, largo - pos + 1))
+      Return 0
+    EndIf
+
+    ; Un comentario antes que una cadena: de ahi al final es comentario.
+    If pcad = 0 Or (pcom > 0 And pcom < pcad) Then
+      If pcom > pos Then x = PintarCodigo(x, y, Mid$(t$, pos, pcom - pos))
+      Color 106, 153, 85
+      Text x, y, Mid$(t$, pcom, largo - pcom + 1)
+      Return 0
+    EndIf
+
+    ; Una cadena. Lo de antes es codigo; la cadena, hasta su comilla de
+    ; cierre, o hasta el final si no la tiene (linea a medio escribir).
+    If pcad > pos Then x = PintarCodigo(x, y, Mid$(t$, pos, pcad - pos))
+    pfin = Instr(t$, comilla$, pcad + 1)
+    If pfin = 0 Then pfin = largo
+    trozo$ = Mid$(t$, pcad, pfin - pcad + 1)
+    Color 206, 145, 120
+    Text x, y, trozo$
+    x = x + TextWidth(trozo$)
+    pos = pfin + 1
+  Wend
+  Return 0
+End Function
+
+Function Pintar()
+  Local i, y, t$, num$, cx, visible$
+
+  SetBuffer CanvasBuffer(lienzo)
+  ClsColor 30, 30, 30
+  Cls
+
+  ; La columna de los numeros de linea, que es media razon de ser de la
+  ; fase 2: el TextArea del kernel no podia pintarla.
+  Color 37, 37, 38
+  Rect 0, 0, MARGEN, lz_h
+
+  For i = 0 To visibles - 1
+    If arriba + i < n_lineas Then
+      y = MARGEN_Y + i * alto_linea
+
+      ; La linea del cursor, resaltada.
+      If arriba + i = cur_l Then
+        Color 40, 40, 40
+        Rect MARGEN, y, lz_w - MARGEN, alto_linea
+      EndIf
+
+      num$ = Str$(arriba + i + 1)
+      If arriba + i = cur_l Then
+        Color 200, 200, 200
+      Else
+        Color 110, 110, 110
+      EndIf
+      Text MARGEN - 8 - TextWidth(num$), y, num$
+
+      ; Solo la parte visible a lo ancho: asi una linea muy larga no
+      ; cuesta mas que una corta.
+      t$ = linea$(arriba + i)
+      If izq > 0 Then
+        If Len(t$) > izq Then
+          visible$ = Right$(t$, Len(t$) - izq)
+        Else
+          visible$ = ""
+        EndIf
+      Else
+        visible$ = t$
+      EndIf
+      PintarLinea(y, visible$)
+    EndIf
+  Next
+
+  ; El cursor, una barra fina donde toca.
+  If cur_l >= arriba And cur_l < arriba + visibles Then
+    t$ = linea$(cur_l)
+    If cur_c > izq Then
+      cx = TEXTO_X + TextWidth(Mid$(t$, izq + 1, cur_c - izq))
+    Else
+      cx = TEXTO_X
+    EndIf
+    Color 220, 220, 120
+    Rect cx, MARGEN_Y + (cur_l - arriba) * alto_linea, 2, alto_linea
+  EndIf
+
+  SetBuffer BackBuffer()
+  repintar = 0
+  Return 0
+End Function
+
+; ---------------------------------------------------------------
+; El explorador
+; ---------------------------------------------------------------
+Function Listar()
+  Local raiz, h, nombre$, ruta$, i
+
+  ; El arbol no tiene "vaciar" ni forma de preguntarle por un hijo: el
+  ; unico asidero de un nodo es el numero que devolvio AddTreeViewNode. Por
+  ; eso se guardan segun se crean, y al volver a listar se quitan esos
+  ; mismos, de atras hacia delante.
+  For i = n_nodos - 1 To 0 Step -1
+    FreeTreeViewNode nodo(i)
+  Next
+  n_nodos = 0
+
+  raiz = TreeViewRoot(arbol)
+  If carpeta$ <> "" Then
+    nodo(n_nodos) = AddTreeViewNode("[ .. ]", raiz)
+    n_nodos = n_nodos + 1
+  EndIf
+
+  h = ReadDir(carpeta$)
+  If h < 0 Then
+    nodo(n_nodos) = AddTreeViewNode("(no se pudo abrir la carpeta)", raiz)
+    n_nodos = n_nodos + 1
+    Return 0
+  EndIf
+  nombre$ = NextFile$(h)
+  While nombre$ <> ""
+    If n_nodos >= MAX_ENTRADAS Then
+      nombre$ = ""
+    Else
+      ruta$ = Unir$(carpeta$, nombre$)
+      ; La barra al final marca las carpetas: se ve de un vistazo, y es lo
+      ; que mira ClicEnArbol para saber si hay que entrar o abrir.
+      If FileType(ruta$) = 2 Then
+        nodo(n_nodos) = AddTreeViewNode(nombre$ + "/", raiz)
+      Else
+        nodo(n_nodos) = AddTreeViewNode(nombre$, raiz)
+      EndIf
+      n_nodos = n_nodos + 1
+      nombre$ = NextFile$(h)
+    EndIf
+  Wend
+  CloseDir h
+  Return 0
+End Function
+
+; ---------------------------------------------------------------
+; Abrir y guardar
+; ---------------------------------------------------------------
+Function Abrir(ruta$)
+  Local h, l$, cuantas
+
+  h = OpenFile(ruta$)
+  If h < 0 Then
+    SetGadgetText est_izq, "No se pudo abrir " + ruta$
+    Return 0
+  EndIf
+
+  Vaciar()
+  cuantas = 0
+  While Eof(h) = 0
+    l$ = ReadLine$(h)
+    If cuantas >= MAX_LINEAS Then
+      ; El unico tope que queda, y se dice en voz alta en vez de recortar
+      ; en silencio: lo que se lleva un archivo por delante es justo eso.
+      CloseFile h
+      SetGadgetText est_izq, "El archivo pasa de " + Str$(MAX_LINEAS) + " lineas: se ha abierto solo el principio"
+      n_lineas = cuantas
+      actual$ = ""
+      repintar = 1
+      Return 0
+    EndIf
+    linea$(cuantas) = l$
+    cuantas = cuantas + 1
+  Wend
+  CloseFile h                      ; los huecos son de TODO el sistema: cerrar siempre
+
+  If cuantas = 0 Then cuantas = 1
+  n_lineas = cuantas
+  actual$ = ruta$
+  sucio = 0
+  repintar = 1
+  Pestana(ruta$)
+  Estado()
+  Return 0
+End Function
+
+; Junta todas las lineas y las escribe. WriteFile quiere el archivo entero
+; de una vez, asi que hay que construir la cadena completa.
+;
+; Se hace POR BLOQUES de 50 lineas y no linea a linea sobre la cadena
+; grande, y la diferencia no es cosmetica: pegar al final de una cadena
+; copia la cadena entera, asi que linea a linea el coste crece con el
+; CUADRADO del numero de lineas. Medido en el emulador: linea a linea, un
+; archivo de 150 lineas ya se sale del presupuesto; por bloques, uno de
+; 2000 lineas (134.000 letras) termina en 51 millones de instrucciones
+; -- unos 35 ms en la Pi -- y sin acercarse al monton de 2 MB que lleva
+; cada .pro.
+Function Guardar()
+  Local texto$, bloque$, i, n
+  If actual$ = "" Then
+    SetGadgetText est_izq, "No hay ningun archivo abierto"
+    Return 0
+  EndIf
+  texto$ = ""
+  bloque$ = ""
+  n = 0
+  For i = 0 To n_lineas - 1
+    bloque$ = bloque$ + linea$(i) + Chr$(10)
+    n = n + 1
+    If n >= 50 Then
+      texto$ = texto$ + bloque$
+      bloque$ = ""
+      n = 0
+    EndIf
+  Next
+  texto$ = texto$ + bloque$
+  WriteFile actual$, texto$
+  sucio = 0
+  SetGadgetText est_izq, "Guardado: " + actual$ + "   " + Str$(n_lineas) + " lineas"
+  Return 0
+End Function
+
+; Añade una pestaña para esta ruta, o selecciona la que ya estaba.
+Function Pestana(ruta$)
+  Local i
+  For i = 0 To n_abiertos - 1
+    If abierto$(i) = ruta$ Then
+      SelectGadgetItem pestanas, i
+      Return 0
+    EndIf
+  Next
+  If n_abiertos >= MAX_ABIERTOS Then
+    SetGadgetText est_izq, "Demasiados archivos abiertos"
+    Return 0
+  EndIf
+  abierto$(n_abiertos) = ruta$
+  AddGadgetItem pestanas, SoloNombre$(ruta$)
+  SelectGadgetItem pestanas, n_abiertos
+  n_abiertos = n_abiertos + 1
+  Return 0
+End Function
+
+; ---------------------------------------------------------------
+; La barra de estado
+; ---------------------------------------------------------------
+Function Estado()
+  Local marca$
+  If actual$ = "" Then
+    SetGadgetText est_izq, "Timonel -- elige un archivo en el explorador"
+  Else
+    If sucio = 1 Then
+      marca$ = " *"
+    Else
+      marca$ = ""
+    EndIf
+    SetGadgetText est_izq, actual$ + marca$ + "   " + Str$(n_lineas) + " lineas"
+  EndIf
+  SetGadgetText est_der, "Ln " + Str$(cur_l + 1) + ", Col " + Str$(cur_c + 1) + "   Nemo Basic   " + Dos$(Hour()) + ":" + Dos$(Minute())
+  Return 0
+End Function
+
+; ---------------------------------------------------------------
+; Clic en el arbol: entrar en una carpeta, subir, o abrir un archivo
+; ---------------------------------------------------------------
+Function ClicEnArbol()
+  Local nodo, texto$, largo
+  nodo = SelectedTreeViewNode(arbol)
+  If nodo < 0 Then Return 0
+  texto$ = GadgetText$(nodo)
+  If texto$ = "" Then Return 0
+
+  If texto$ = "[ .. ]" Then
+    carpeta$ = Padre$(carpeta$)
+    Listar()
+    Return 0
+  EndIf
+
+  largo = Len(texto$)
+  If Right$(texto$, 1) = "/" Then
+    carpeta$ = Unir$(carpeta$, Left$(texto$, largo - 1))
+    Listar()
+    Return 0
+  EndIf
+
+  Abrir(Unir$(carpeta$, texto$))
+  Return 0
+End Function
+
+Function ClicEnPestana()
+  Local i
+  i = SelectedGadgetItem(pestanas)
+  If i < 0 Then Return 0
+  If i >= n_abiertos Then Return 0
+  If abierto$(i) = actual$ Then Return 0
+  Abrir(abierto$(i))
+  Return 0
+End Function
+
+Function Orden(que)
+  If que = M_NUEVO Then
+    Vaciar()
+    actual$ = ""
+    Estado()
+  EndIf
+  If que = M_GUARDAR Then Guardar()
+  If que = M_RECARGAR Then
+    If actual$ <> "" Then Abrir(actual$)
+  EndIf
+  If que = M_SUBIR Then
+    carpeta$ = Padre$(carpeta$)
+    Listar()
+  EndIf
+  If que = M_RAIZ Then
+    carpeta$ = ""
+    Listar()
+  EndIf
+  Return 0
+End Function
+
+; ---------------------------------------------------------------
+; La ventana
+; ---------------------------------------------------------------
+CreateWindow "Timonel", 60, 50, ANCHO_INI, ALTO_INI
+
+; -- menus --
+menu = WindowMenu()
+m_archivo = CreateMenu("Archivo", 0, menu)
+CreateMenu "Nuevo", M_NUEVO, m_archivo
+CreateMenu "Guardar", M_GUARDAR, m_archivo
+CreateMenu "Recargar", M_RECARGAR, m_archivo
+CreateMenu "", 0, m_archivo
+CreateMenu "Salir", M_SALIR, m_archivo
+m_ir = CreateMenu("Ir", 0, menu)
+CreateMenu "Subir una carpeta", M_SUBIR, m_ir
+CreateMenu "A la raiz", M_RAIZ, m_ir
+UpdateWindowMenu
+
+; -- barra de actividad: la tira de iconos de la izquierda --
+act = CreatePanel(0, 0, ACT_W, ALTO_INI - ESTADO_H)
+SetPanelColor act, 51, 51, 51
+
+; -- explorador --
+lado = CreatePanel(ACT_W, 0, LADO_W, ALTO_INI - ESTADO_H)
+SetPanelColor lado, 37, 37, 38
+etiq = CreateLabel("EXPLORADOR", ACT_W + 10, 6, LADO_W - 20, 16)
+arbol = CreateTreeView(ACT_W + 6, 26, LADO_W - 12, ALTO_INI - ESTADO_H - 32)
+
+; -- pestañas y editor --
+pestanas = CreateTabber(EDITOR_X, 0, ANCHO_INI - EDITOR_X, PEST_H)
+lienzo = CreateCanvas(EDITOR_X, PEST_H, ANCHO_INI - EDITOR_X, ALTO_INI - ESTADO_H - PEST_H)
+
+; -- barra de estado --
+estado = CreatePanel(0, ALTO_INI - ESTADO_H, ANCHO_INI, ESTADO_H)
+SetPanelColor estado, 0, 122, 204
+est_izq = CreateLabel("", 8, ALTO_INI - ESTADO_H + 4, 560, 16)
+est_der = CreateLabel("", ANCHO_INI - 260, ALTO_INI - ESTADO_H + 4, 250, 16)
+
+; Las medidas de verdad de la fuente del sistema, una sola vez.
+; +6 y no +2: con +2 las lineas se tocaban y el codigo se leia mal. Seis
+; pixeles de aire es lo que usa cualquier editor de verdad.
+alto_linea = FontHeight() + 6
+ancho_letra = TextWidth("m")
+If ancho_letra < 1 Then ancho_letra = 8
+
+claves$ = " if then else elseif endif while wend for next to step function return end global local const dim repeat until exit select case default type new delete each and or not xor shl shr sar mod true false include print goto gosub "
+
+reloj = CreateTimer(1)
+Recolocar()
+Vaciar()
+Listar()
+Estado()
+Pintar()
+
+; El bucle ya no puede esperar bloqueado en WaitEvent: teclear no produce
+; ningun evento de gadget, asi que el editor no se enteraria de una sola
+; tecla. Se pregunta por eventos SIN bloquear, se vacia la cola del
+; teclado, y se cede el turno -- que es lo que marca el ritmo.
+Repeat
+  e = PollEvent()
+
+  If e = EVENT_MENUACTION Then
+    If EventData() = M_SALIR Then Exit
+    Orden(EventData())
+    repintar = 1
+  EndIf
+
+  If e = EVENT_GADGETACTION Then
+    quien = EventSource()
+    If quien = arbol Then ClicEnArbol()
+    If quien = pestanas Then ClicEnPestana()
+  EndIf
+
+  If e = EVENT_WINDOWSIZE Then Recolocar()
+
+  If e = EVENT_TIMERTICK Then Estado()
+
+  ; Todas las teclas pendientes de una vez: si se coge solo una por
+  ; vuelta, al teclear rapido se acumulan y el cursor va por detras.
+  c = ReadChar()
+  While c > 0
+    Tecla(c)
+    c = ReadChar()
+    repintar = 1
+  Wend
+
+  If repintar = 1 Then
+    Pintar()
+    Estado()
+  EndIf
+
+  Pump()
+Until e = EVENT_WINDOWCLOSE

@@ -1,0 +1,38 @@
+; t11.nb -- Sin/Cos/Tan: onda, reloj y circulo
+; los angulos van en GRADOS, como en BlitzPlus
+
+Graphics 400, 300
+Cls
+
+; --- onda senoidal ---
+Color 0, 200, 255
+For x = 0 To 399
+  y# = Sin(x * 2) * 40.0
+  Plot x, 60 + Int(y#)
+Next
+
+; --- circulo con Sin y Cos ---
+Color 255, 220, 0
+cx = 120
+cy = 190
+For a = 0 To 359
+  x# = Cos(a) * 60.0
+  y# = Sin(a) * 60.0
+  Plot cx + Int(x#), cy + Int(y#)
+Next
+
+; --- esfera de radios (reloj) ---
+Color 255, 120, 255
+rx = 300
+ry = 190
+For a = 0 To 359 Step 30
+  x# = Cos(a) * 55.0
+  y# = Sin(a) * 55.0
+  Line rx, ry, rx + Int(x#), ry + Int(y#)
+Next
+
+Color 255, 255, 255
+Text 10, 10, "Sin / Cos en grados"
+Text 10, 280, "onda, circulo y radios"
+
+Delay 5000
