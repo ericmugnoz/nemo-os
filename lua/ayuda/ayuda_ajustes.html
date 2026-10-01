@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Ajustes - Ayuda de Nemo OS</title>
+<style>
+body { background-color:#f6f7fb; color:#1c1c20; margin:0; padding:0 }
+.cinta { background-color:#203060; color:#ffffff; padding:12px 18px; margin:0 }
+.lema { color:#b9c6e4; margin:2px 0 0 0 }
+.vuelta { color:#ffffff; text-decoration:none }
+.hoja { padding:4px 18px 24px 18px }
+h2 { color:#204080; margin:20px 0 4px 0 }
+h3 { color:#305090; margin:16px 0 2px 0 }
+.nota { background-color:#e6ecf8; padding:8px 12px; margin:12px 0 }
+.aviso { background-color:#fbeee0; padding:8px 12px; margin:12px 0 }
+.pie { color:#606070; margin:24px 0 0 0 }
+</style>
+</head>
+<body>
+
+<div class="cinta">
+<h1>Ajustes</h1>
+<p class="lema"><a class="vuelta" href="indice.html">Volver al índice de la ayuda</a></p>
+</div>
+
+<div class="hoja">
+
+<p>Nemo OS no tiene un panel de control único: cada cosa se ajusta con su
+programa. Aquí están los cuatro que existen y qué hace cada uno.</p>
+
+<h2>La pantalla</h2>
+
+<p>Programa <b>Configurar pantalla</b>. Ofrece cuatro resoluciones:</p>
+
+<ul>
+<li>1024 × 768, la segura de siempre</li>
+<li>1280 × 720</li>
+<li>1400 × 900</li>
+<li>1600 × 900</li>
+</ul>
+
+<p>Un clic sobre una la guarda. La tecla <b>Q</b> cierra el programa.</p>
+
+<div class="aviso">
+<p><b>El cambio no se ve hasta que reinicias.</b> Cambiar la pantalla con el
+sistema en marcha es demasiado arriesgado, así que la resolución elegida se
+guarda y se aplica en el siguiente arranque: menú Inicio, Reiniciar.</p>
+<p>Si la resolución elegida fallara al arrancar, el sistema vuelve solo a
+1024 × 768. No te puedes quedar sin pantalla.</p>
+</div>
+
+<h2>Los iconos del escritorio</h2>
+
+<p>Programa <b>Editor de escritorio</b>. Sus botones son <b>Añadir</b>,
+<b>Quitar</b>, <b>Renombrar</b>, el del tamaño de los iconos y <b>Salir</b>.
+Debajo, una vista del escritorio con su rejilla, y al fondo el catálogo de
+dibujos disponibles.</p>
+
+<p>Todo va con <b>un solo clic</b>; aquí no hay doble clic ni se arrastra nada:</p>
+
+<ul>
+<li><b>Añadir</b>: elige el programa en el cuadro de archivos y luego haz clic
+en una casilla libre.</li>
+<li>Para <b>mover</b> un icono: clic en el icono y después clic en la casilla
+donde lo quieras.</li>
+<li>Para <b>cambiarle el dibujo</b>: con el icono seleccionado, clic en
+cualquier dibujo del catálogo de abajo.</li>
+<li><b>Renombrar</b>: el nombre admite 15 caracteres y se pasa a mayúsculas.</li>
+</ul>
+
+<p>Cada cambio se guarda al momento. El botón del tamaño alterna entre iconos
+normales y grandes, y ese ajuste lo comparten el escritorio y el Explorador.</p>
+
+<p>Si la ventana es pequeña sólo se ven, y sólo se pueden usar, las casillas que
+quepan enteras; el programa te lo dice. Maximiza la ventana para ver el
+escritorio completo.</p>
+
+<h2>El menú de Inicio</h2>
+
+<p>Programa <b>Menú de Inicio</b>. Con él se crean las secciones del menú, las
+entradas de cada una y sus iconos.</p>
+
+<p>Botones: <b>+ Sección</b>, <b>+ Entrada</b>, <b>Quitar</b>, <b>Nombre</b>,
+<b>Destino</b>, <b>Icono</b>, <b>Sube</b>, <b>Baja</b> y <b>Guardar</b>.</p>
+
+<p>El <b>destino</b> de una entrada es el nombre del programa que lanza, con su
+extensión: <code>editor.pro</code>, <code>pintor.lua</code>. Una sección por sí
+sola no lanza nada: es sólo un cajón.</p>
+
+<p>Al pulsar <b>Guardar</b> el menú se recarga en el acto, sin reiniciar.</p>
+
+<p>Caben 10 secciones y 14 entradas por sección. Los nombres admiten 24
+caracteres y los espacios se convierten en guiones bajos. <b>Apagar</b> y
+<b>Reiniciar</b> no se editan: van siempre al final.</p>
+
+<h2>El fondo de pantalla</h2>
+
+<p>No tiene programa propio: se pone desde el <b>Navegante</b>. Ponte en la
+carpeta DOCUMENTOS/IMAGENES, selecciona una imagen <code>.nimg</code> y pulsa el
+botón <b>Fondo</b>.</p>
+
+<p>De fábrica viene puesto <code>nautilus.nimg</code>. El sistema respeta el que
+elijas: no te lo cambia en los siguientes arranques.</p>
+
+<h2>El espacio de la tarjeta</h2>
+
+<p>Programa <b>Particionador</b>. Dibuja cómo está repartida la tarjeta y, si
+sobra sitio al final, permite que NemoFS crezca hasta el borde.</p>
+
+<p>Es útil cuando pones el sistema en una tarjeta más grande que la imagen
+original: el espacio de más no se usa solo, hay que reclamarlo aquí.</p>
+
+<p>Pulsa <b>Usar todo el espacio libre</b> y confirma con <b>Sí, ampliar</b>.</p>
+
+<div class="aviso">
+<p>La partición de arranque <b>no se toca nunca</b>: sale dibujada con un
+candado. Y mientras el particionador trabaja, <b>no saques la tarjeta</b>.</p>
+<p>Este programa no crea ni borra ni formatea particiones. Sólo estira NemoFS
+hacia el final, y sólo si detrás no hay nada más. Si encuentra cualquier otra
+partición después, no toca nada y te lo dice.</p>
+</div>
+
+<h2>Dónde se guarda todo esto</h2>
+
+<p>Los ajustes son archivos de texto o de configuración en la raíz de C:, y se
+pueden copiar para tener una copia de seguridad:</p>
+
+<table>
+<tr><th>Archivo</th><th>Guarda</th></tr>
+<tr><td>SCREEN.CFG</td><td>La resolución de pantalla</td></tr>
+<tr><td>DESKTOP.CFG</td><td>Los iconos del escritorio y su tamaño</td></tr>
+<tr><td>MENU.CFG</td><td>El menú de Inicio</td></tr>
+<tr><td>FONDO.CFG</td><td>El fondo de pantalla</td></tr>
+</table>
+
+<p>MENU.CFG está en la raíz a propósito, y no escondido en SISTEMA: es un
+archivo de texto y se puede editar a mano con el editor si prefieres.</p>
+
+<p class="pie">Ayuda de Nemo OS.</p>
+
+</div>
+</body>
+</html>

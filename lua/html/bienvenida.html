@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Bienvenida</title>
+<style>
+  body { background-color: #f4f4f8; color: #202030 }
+  h1 { color: navy; text-align: center }
+  h2 { color: #204080 }
+  .caja { background-color: #ffffff; color: #202030 }
+  .aviso { background-color: #fff3b0; color: #503000 }
+  .pie { color: gray; text-align: center }
+</style>
+</head>
+<body>
+
+<h1>Nemo OS</h1>
+<p style="text-align:center"><b>Sistema operativo para Raspberry Pi 4</b> &mdash; escrito desde cero</p>
+<hr>
+
+<h2>Qué estás viendo</h2>
+<p>Esta pagina la dibuja el <b>visor de HTML</b> de Nemo OS: un programa en Lua
+(<code>visor.lua</code>) que lee un archivo <code>.html</code> del disco y lo pinta con las
+fuentes proporcionales del sistema (DejaVu, con antialiasing). No es un navegador: no hay red por debajo, ni
+JavaScript. Es una forma de escribir documentos y pantallas <i>vistosas</i> para el propio
+sistema, con una herramienta que ya conoces.</p>
+
+<div class="caja">
+<h2>Lo que sabe hacer</h2>
+<ul>
+  <li>Encabezados a distintos tamaños, texto <big>grande</big> y <small>pequeño</small>, y tres familias: sans, <span style="font-family:serif">serif</span> y <span style="font-family:monospace">mono</span></li>
+  <li><b>Negrita</b>, <i>cursiva</i>, <u>subrayado</u> y <code>codigo monoespaciado</code>, con acentos: canción, año, ¿qué?</li>
+  <li>Listas con vinetas y numeradas:
+    <ol>
+      <li>anidadas</li>
+      <li>con su propio sangrado</li>
+    </ol>
+  </li>
+  <li>Colores por nombre, <font color="#c03060">en hexadecimal</font> o con <span style="color: rgb(0,140,90)">rgb()</span></li>
+  <li>Fondos de bloque, como esta caja blanca, y de texto <span class="aviso">como este aviso</span></li>
+  <li>Alineacion a la izquierda, al centro y a la derecha</li>
+  <li>Imagenes en formato <code>.nimg</code> (el del sistema)</li>
+  <li><a href="ayuda_html.html">Enlaces entre páginas</a> &mdash; pulsa este para ver la ayuda</li>
+  <li>Tablas, y documentos en <a href="GUIA_HTML.md">Markdown</a></li>
+  <li><a href="demo_lua.html">Páginas con comportamiento</a>: botones, contadores, relojes &mdash; con <code>&lt;script type="text/lua"&gt;</code></li>
+</ul>
+</div>
+
+<blockquote>Una cita al margen, con su barra lateral, para textos que quieres destacar.</blockquote>
+
+<h2>Texto preformateado</h2>
+<pre>
+  run visor.lua bienvenida.html
+  run visor.lua DOCUMENTOS:ayuda_html.html
+</pre>
+
+<div class="aviso">
+<p><b>Controles:</b> rueda del raton y flechas para desplazarte, clic en un enlace para seguirlo,
+Retroceso para volver, <b>+</b> y <b>-</b> para el zoom, Esc para cerrar.</p>
+</div>
+
+<p class="pie">Nemo OS &middot; Laboratorio Astillero</p>
+
+</body>
+</html>

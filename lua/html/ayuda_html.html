@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head><title>Ayuda del visor</title>
+<style> body { background-color: white } h1 { color: #204080 } code { color: #800040 } th { text-align: left } </style>
+</head>
+<body>
+<h1>Escribir páginas para Nemo OS</h1>
+<p>Cualquier archivo <code>.html</code> del disco se abre con doble clic desde el explorador, o con
+<code>run visor.lua nombre.html</code> desde la shell. <a href="bienvenida.html">Volver a la bienvenida</a>.</p>
+
+<h2>Tipografía</h2>
+<p>Tres familias (sans, serif, mono) en 10-40 px, con negrita y cursiva de verdad, antialiasing, y todo Latin-1: acentos, ñ, ¿¡, más guiones y comillas tipográficas y el símbolo €. Los archivos van en UTF-8.</p>
+
+<h2>Etiquetas que entiende</h2>
+<ul>
+  <li><b>Estructura:</b> <code>html head title body div section article header footer nav main center</code></li>
+  <li><b>Bloques:</b> <code>h1..h6 p br hr ul ol li blockquote pre</code> y tablas <code>table tr td th</code></li>
+  <li><b>Inline:</b> <code>b strong i em u code span small big font a img</code> y <code>button</code></li>
+  <li><b>Formularios:</b> <code>form input</code> (texto, contraseña, casillas, envío) y <code>button</code>: ver <a href="demo_lua.html#seccion-formulario">la demostración</a></li>
+</ul>
+
+<h2>Estilos</h2>
+<p>Con <code>style=""</code> en cualquier etiqueta, o un bloque <code>&lt;style&gt;</code> con selectores por
+etiqueta (<code>p</code>), clase (<code>.aviso</code>) o id (<code>#top</code>). Propiedades:</p>
+<ul>
+  <li><code>color</code> y <code>background-color</code>: nombres (<code>red</code>, <code>navy</code>...), <code>#rrggbb</code>, <code>#rgb</code>, <code>rgb(r,g,b)</code></li>
+  <li><code>text-align</code>: <code>left</code>, <code>center</code>, <code>right</code></li>
+  <li><code>font-size</code> en <code>px</code>, <code>em</code> o <code>pt</code>: se usa el tamaño más cercano disponible (10, 12, 14, 16, 20, 24, 32, 40 px)</li>
+  <li><code>font-family</code>: <code>sans-serif</code> (por defecto), <code>serif</code>, <code>monospace</code></li>
+  <li><code>font-style: italic</code></li>
+  <li><code>font-weight: bold</code>, <code>text-decoration: underline</code></li>
+  <li><code>margin</code> y <code>padding</code>, en <code>px</code>, <code>em</code> o <code>pt</code>, y <code>display: none</code></li>
+</ul>
+
+<div style="margin: 6px 40px; padding: 10px 16px; background-color: #e8eef8">
+<b>Una caja con margen y relleno:</b> <code>margin: 6px 40px; padding: 10px 16px</code>. El fondo cubre
+el relleno; el margen queda fuera.
+</div>
+
+<h2>Tablas con celdas que abarcan varias</h2>
+<table>
+<tr><th rowspan="2">Parte</th><th colspan="2">Tamaño</th></tr>
+<tr><th>QEMU</th><th>Pi 4</th></tr>
+<tr><td>Memoria de programas</td><td>3072 MB</td><td>7104 MB</td></tr>
+<tr><td>Núcleos</td><td colspan="2" style="text-align:center">4 (el 0, para el sistema)</td></tr>
+</table>
+<p>Con <code>colspan="2"</code> una celda ocupa dos columnas; con <code>rowspan="2"</code>, dos filas.</p>
+
+<h2>Lo que no hay (todavía)</h2>
+<ul>
+  <li><code>select</code> y <code>textarea</code>; bordes y anchos en los bloques; flotantes y columnas</li>
+  <li>JavaScript &mdash; y no lo habrá. En su lugar, <code>&lt;script type="text/lua"&gt;</code>: ver <a href="demo_lua.html">la demostración</a></li>
+</ul>
+<p>Sí hay enlaces a anclas (<code>href="#seccion"</code>, <code>otra.html#seccion</code>) y rutas con <code>..</code>.</p>
+
+<h2>Markdown</h2>
+<p>El visor abre también archivos <code>.md</code>: los convierte a HTML y los pinta igual. Las guías del sistema (<a href="GUIA_HTML.md">GUIA_HTML.md</a>, <a href="GUIA_RED.md">GUIA_RED.md</a>, <a href="GUIA_LUA.md">GUIA_LUA.md</a>) están en esta misma carpeta.</p>
+
+<h2>Imágenes</h2>
+<p>Solo el formato <code>.nimg</code> del sistema, hasta 256x256. Convierte un PNG o JPEG con
+<code>nimg_convert.py</code> en tu ordenador y copia el resultado junto al <code>.html</code>. Si la imagen no se
+encuentra, se muestra su <code>alt</code> entre corchetes.</p>
+
+<hr>
+<p style="text-align:right"><a href="bienvenida.html">&larr; Bienvenida</a></p>
+</body>
+</html>

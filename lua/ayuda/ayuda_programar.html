@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Programar en Nemo OS - Ayuda</title>
+<style>
+body { background-color:#f6f7fb; color:#1c1c20; margin:0; padding:0 }
+.cinta { background-color:#203060; color:#ffffff; padding:12px 18px; margin:0 }
+.lema { color:#b9c6e4; margin:2px 0 0 0 }
+.vuelta { color:#ffffff; text-decoration:none }
+.hoja { padding:4px 18px 24px 18px }
+h2 { color:#204080; margin:20px 0 4px 0 }
+h3 { color:#305090; margin:16px 0 2px 0 }
+.nota { background-color:#e6ecf8; padding:8px 12px; margin:12px 0 }
+.pie { color:#606070; margin:24px 0 0 0 }
+</style>
+</head>
+<body>
+
+<div class="cinta">
+<h1>Programar en Nemo OS</h1>
+<p class="lema"><a class="vuelta" href="indice.html">Volver al índice de la ayuda</a></p>
+</div>
+
+<div class="hoja">
+
+<p>Nemo OS se programa a sí mismo: trae sus propios lenguajes y su propio
+compilador, y con ellos se han escrito buena parte de los programas que ya
+usas. Esta página es el primer vistazo; las guías completas están instaladas en
+la carpeta DOCUMENTOS y se abren igual que esta ayuda.</p>
+
+<h2>La terminal</h2>
+
+<p>Escribe una orden y pulsa Enter. El símbolo del principio dice dónde estás:
+<code>C:\DOCUMENTOS&gt;</code> es la carpeta DOCUMENTOS del disco NemoFS.</p>
+
+<table>
+<tr><th>Orden</th><th>Hace</th></tr>
+<tr><td><code>help</code></td><td>La lista de órdenes</td></tr>
+<tr><td><code>ls</code></td><td>Lo que hay en la carpeta, con su tamaño</td></tr>
+<tr><td><code>pwd</code></td><td>Dice en qué carpeta estás</td></tr>
+<tr><td><code>cd CARPETA</code></td><td>Entra en esa carpeta</td></tr>
+<tr><td><code>cd ..</code></td><td>Sube un nivel</td></tr>
+<tr><td><code>mkdir NOMBRE</code></td><td>Crea una carpeta</td></tr>
+<tr><td><code>del NOMBRE</code> o <code>rm NOMBRE</code></td><td>Borra un archivo</td></tr>
+<tr><td><code>cat ARCHIVO</code> o <code>type ARCHIVO</code></td><td>Enseña un archivo de texto</td></tr>
+<tr><td><code>echo TEXTO</code></td><td>Escribe ese texto</td></tr>
+<tr><td><code>run PROGRAMA.pro</code></td><td>Ejecuta un programa; lo que pongas detrás se le pasa como argumento</td></tr>
+<tr><td><code>disco nemofs</code> / <code>disco fat</code></td><td>Información del disco</td></tr>
+<tr><td><code>C:</code> / <code>F:</code></td><td>Cambia de disco</td></tr>
+<tr><td><code>clear</code> o <code>cls</code></td><td>Limpia la pantalla</td></tr>
+<tr><td><code>about</code></td><td>Acerca del sistema</td></tr>
+<tr><td><code>exit</code></td><td>Cierra la terminal</td></tr>
+</table>
+
+<div class="nota">
+<p>Las órdenes se escriben <b>en minúsculas</b>: <code>LS</code> no funciona,
+<code>ls</code> sí. Los nombres de carpeta, en cambio, dan igual en mayúsculas o
+minúsculas. <code>C:</code> y <code>F:</code> valen de las dos formas.</p>
+</div>
+
+<h2>Nemo Basic y el IDE</h2>
+
+<p><b>Nemo Basic</b> es el lenguaje propio del sistema. Los programas se
+escriben en archivos <code>.nb</code> y se compilan a un <code>.pro</code>, que
+ya es un programa de verdad, ejecutable con doble clic.</p>
+
+<p>El <b>IDE</b> es donde se escriben. Trae pestañas, hasta seis archivos a la
+vez, y el menú <b>Ejecutar</b> con dos opciones: <b>Compilar</b> y
+<b>Compilar y ejecutar</b>.</p>
+
+<p>Si el compilador encuentra un error, el IDE te lleva solo a la línea del
+fallo, incluso si está en otra pestaña. Los renglones con la palabra "error"
+salen en rojo.</p>
+
+<p>Para compilar, el archivo <b>tiene que llamarse .nb</b>. El IDE lo guarda
+antes de compilar, así que no hace falta acordarse.</p>
+
+<h2>Aronnax, el diseñador visual</h2>
+
+<p>Aronnax monta la ventana de un programa colocando controles con el ratón:
+botones, etiquetas, campos de texto, listas, pestañas, y también los controles
+del Nautilus para las patillas GPIO de la Raspberry Pi.</p>
+
+<p>Al guardar escribe dos archivos: el proyecto <code>.anx</code> y el programa
+en Nemo Basic <code>.nb</code> que lo hace funcionar. Con el botón
+<b>Ejecutar</b> lo compila y lo arranca sin salir del programa.</p>
+
+<p>El <b>doble clic</b> sobre un control te lleva a su función en el código, y
+la crea si no existía. Es la forma rápida de trabajar: diseñas, doble clic,
+escribes qué pasa al pulsar.</p>
+
+<p>Trae plantillas para empezar: Formulario, Lista y detalle, Menús y barra,
+Panel del Nautilus y Lienzo animado.</p>
+
+<h2>Lua</h2>
+
+<p>Nemo OS lleva un intérprete de Lua, y muchas de las aplicaciones que usas
+están escritas en él: el Pintor, el Navegante, el visor de documentos, la
+calculadora, el reloj.</p>
+
+<p>Viven en la carpeta ACCESORIOS y se ejecutan igual que cualquier programa:
+doble clic, o <code>run reloj.lua</code> desde la terminal, desde donde estés.</p>
+
+<p>Como su código está ahí, en texto, se pueden leer y cambiar con el editor.
+Es la mejor forma de aprender cómo funciona el sistema por dentro.</p>
+
+<h2>Páginas con comportamiento</h2>
+
+<p>El visor de documentos sabe ejecutar Lua dentro de una página HTML, con
+<code>&lt;script type="text/lua"&gt;</code>. Sirve para hacer páginas que
+responden: formularios, botones, cuentas.</p>
+
+<p>Ese Lua corre aislado, sin acceso al sistema, y si falla no se lleva por
+delante el visor: sale un aviso rojo arriba.</p>
+
+<p>Hay un ejemplo instalado: <code>demo_lua.html</code>, en DOCUMENTOS.</p>
+
+<h2>Las guías</h2>
+
+<p>Están todas en la carpeta <b>MANUALES</b>, en la raíz del disco. Ábrelas con
+doble clic desde el Explorador o el Navegante, o empieza por
+<code>INDICE.md</code>, que las lista con un enlace a cada una. Antes vivían en
+DOCUMENTOS; se movieron porque veinte guías no dejaban sitio para tus cosas.</p>
+
+<table>
+<tr><th>Archivo</th><th>De qué trata</th></tr>
+<tr><td>GUIA_NEMO_BASIC.md</td><td>Nemo Basic: empezar, compilar y el lenguaje (5 partes)</td></tr>
+<tr><td>REFERENCIA_NEMO_BASIC.md</td><td>Los 190 comandos, uno a uno, con ejemplos (5 partes)</td></tr>
+<tr><td>GUIA_LUA.md</td><td>Programar en Lua dentro de Nemo OS</td></tr>
+<tr><td>GUIA_LUA_SYSCALLS.md</td><td>Las llamadas al sistema, una por una</td></tr>
+<tr><td>GUIA_LUA_SYSCALLS_2.md</td><td>Continuación de la anterior</td></tr>
+<tr><td>GUIA_AMBITO.md</td><td>Ámbito de las variables en Nemo Basic</td></tr>
+<tr><td>GUIA_ARONNAX.md</td><td>El diseñador visual a fondo</td></tr>
+<tr><td>GUIA_HTML.md</td><td>Qué HTML y qué CSS entiende el visor</td></tr>
+<tr><td>GUIA_NIMG.md</td><td>El formato de imagen propio</td></tr>
+<tr><td>GUIA_ICONOS.md</td><td>Los iconos del sistema</td></tr>
+<tr><td>GUIA_GPIO.md</td><td>Las patillas de la Raspberry Pi</td></tr>
+<tr><td>GUIA_RED.md</td><td>La red y la terminal remota</td></tr>
+</table>
+
+<p>Y dos proyectos de ejemplo de Aronnax, también en DOCUMENTOS:
+<code>panel_nautilus.anx</code> y <code>editor_texto.anx</code>.</p>
+
+<p class="pie">Ayuda de Nemo OS.</p>
+
+</div>
+</body>
+</html>

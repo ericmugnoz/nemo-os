@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Primeros pasos - Ayuda de Nemo OS</title>
+<style>
+body { background-color:#f6f7fb; color:#1c1c20; margin:0; padding:0 }
+.cinta { background-color:#203060; color:#ffffff; padding:12px 18px; margin:0 }
+.lema { color:#b9c6e4; margin:2px 0 0 0 }
+.vuelta { color:#ffffff; text-decoration:none }
+.hoja { padding:4px 18px 24px 18px }
+h2 { color:#204080; margin:18px 0 4px 0 }
+h3 { color:#305090; margin:14px 0 2px 0 }
+.nota { background-color:#e6ecf8; padding:8px 12px; margin:12px 0 }
+.aviso { background-color:#fbeee0; padding:8px 12px; margin:12px 0 }
+.pie { color:#606070; margin:24px 0 0 0 }
+</style>
+</head>
+<body>
+
+<div class="cinta">
+<h1>Primeros pasos</h1>
+<p class="lema"><a class="vuelta" href="indice.html">Volver al índice de la ayuda</a></p>
+</div>
+
+<div class="hoja">
+
+<h2>El escritorio</h2>
+
+<p>Lo primero que ves al arrancar es el escritorio: un fondo con iconos.
+Cada icono es un atajo a un programa.</p>
+
+<p>Se abre con <b>doble clic</b>: dos clics seguidos y rápidos sobre el mismo
+icono. Un clic solo lo selecciona.</p>
+
+<p>Los iconos que hay de fábrica se pueden cambiar, quitar o mover, y puedes
+poner los tuyos. Eso se explica en <a href="ajustes.html">Ajustes</a>.</p>
+
+<h2>La barra de tareas</h2>
+
+<p>Es la franja gris de abajo del todo. Tiene tres cosas:</p>
+
+<ul>
+<li>El botón <b>Inicio</b>, a la izquierda.</li>
+<li>Un botón por cada ventana abierta. Pulsa uno para traer esa ventana al
+frente; si estaba minimizada, vuelve.</li>
+<li>La hora, a la derecha.</li>
+</ul>
+
+<h2>El menú Inicio</h2>
+
+<p>Pulsa <b>Inicio</b> y se despliega el menú. Está repartido en secciones.
+Haz clic en una sección y su lista de programas se abre a un lado; vuelve a
+hacer clic en ella para cerrarla.</p>
+
+<p>Al final del menú, siempre, están <b>Apagar</b> y <b>Reiniciar</b>. Esos dos
+no se pueden quitar ni cambiar de sitio.</p>
+
+<p>Todo lo demás del menú sí es tuyo: las secciones, los programas de cada una y
+sus iconos se editan con el <b>Editor del menú de Inicio</b>, que guarda lo que
+elijas en un archivo llamado MENU.CFG.</p>
+
+<h2>Las ventanas</h2>
+
+<p>Cada programa abre su ventana. Arriba lleva una barra azul con el nombre y,
+a la derecha, tres botones:</p>
+
+<ul>
+<li><b>–</b> minimiza: la ventana desaparece y se queda en la barra de tareas.</li>
+<li><b>o</b> maximiza: la ventana ocupa toda la pantalla. Púlsalo otra vez para
+devolverla a su tamaño.</li>
+<li><b>×</b> cierra el programa.</li>
+</ul>
+
+<p>Algunas ventanas no tienen los tres botones: la Calculadora y el Reloj, por
+ejemplo, no se pueden maximizar.</p>
+
+<p>Para mover una ventana, arrastra su barra de título.</p>
+
+<p><b>Las ventanas no se pueden estirar con el ratón</b>: en Nemo OS todavía no
+hay redimensionado por arrastre. Cada programa abre su ventana con el tamaño que
+necesita, y si te queda pequeña, el botón de maximizar es la solución.</p>
+
+<div class="nota">
+<p><b>Sólo una ventana recibe lo que escribes</b>: la última en la que hayas
+hecho clic. Si estás tecleando y no aparece nada, haz clic dentro de la ventana
+y vuelve a probar.</p>
+</div>
+
+<h2>Abrir un programa</h2>
+
+<p>Hay cuatro maneras, y todas hacen lo mismo:</p>
+
+<ul>
+<li>Doble clic en su icono del escritorio.</li>
+<li>Desde el menú Inicio.</li>
+<li>Doble clic sobre un archivo en el Explorador o en el Navegante: se abre el
+programa que corresponde a ese tipo de archivo.</li>
+<li>Escribiendo <code>run programa.pro</code> en la terminal.</li>
+</ul>
+
+<h2>Apagar el equipo</h2>
+
+<p>Menú <b>Inicio</b>, y abajo del todo, <b>Apagar</b>.</p>
+
+<div class="aviso">
+<p><b>En una Raspberry Pi de verdad, "Apagar" no corta la corriente.</b> No
+existe forma de hacerlo desde el sistema: lo que hace es detener el procesador
+de forma segura. Cuando la pantalla se quede quieta, ya puedes desenchufar.</p>
+<p><b>Reiniciar</b> sí funciona del todo y arranca otra vez.</p>
+</div>
+
+<p>Antes de apagar, guarda lo que estés escribiendo: los programas de Nemo OS
+<b>no avisan</b> de que tienes cambios sin guardar. El único que te frena es
+Aronnax, el diseñador visual: con cambios pendientes hay que repetir la
+acción para que la descarte.</p>
+
+<div class="aviso">
+<p><b>No saques la tarjeta con el equipo encendido.</b> El sistema escribe en
+ella cuando guardas algo, cuando mueves un icono del escritorio o cuando cambias
+un ajuste.</p>
+</div>
+
+<h2>Y ahora qué</h2>
+
+<p>Lo siguiente que conviene entender es dónde se guardan las cosas:
+<a href="archivos.html">Archivos y discos</a>.</p>
+
+<p class="pie">Ayuda de Nemo OS.</p>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Páginas con comportamiento</title>
+<style>
+  body { background-color: #f6f7fb; color: #202030 }
+  h1 { color: #203060 }
+  .panel { background-color: #ffffff }
+  .grande { font-size: 32px; font-weight: bold; color: #204080 }
+  .nota { color: #606070; font-size: 12px }
+</style>
+<script type="text/lua">
+  -- Un contador: dos botones y un texto que cambia.
+  local n = 0
+  local function mostrar()
+    doc.get("contador").texto = n
+    doc.get("contador").color = (n < 0) and "#c03030" or (n > 0) and "#208040" or "#204080"
+  end
+  doc.al_pulsar("mas",   function() n = n + 1; mostrar() end)
+  doc.al_pulsar("menos", function() n = n - 1; mostrar() end)
+  doc.al_pulsar("cero",  function() n = 0; mostrar() end)
+
+  -- Un reloj que se actualiza solo, cada segundo.
+  doc.cada(1000, function() doc.get("hora").texto = doc.hora() end)
+  doc.get("hora").texto = doc.hora()
+
+  -- Un semáforo: clic en la caja para cambiar de color.
+  local colores = { "#e05050", "#e0c050", "#50c060" }
+  local nombres = { "rojo", "ámbar", "verde" }
+  local i = 3
+  doc.al_pulsar("semaforo", function()
+    i = i % 3 + 1
+    doc.get("semaforo").fondo = colores[i]
+    doc.get("estado").texto = "Semáforo en " .. nombres[i]
+  end)
+
+  -- Una lista que crece y encoge: elementos creados y borrados desde el script.
+  local cosas = { "pan", "leche", "huevos", "tomates", "arroz", "aceite", "café" }
+  local cuantas = 0
+  local function contar() doc.get("cuenta").texto = cuantas .. (cuantas == 1 and " cosa" or " cosas") end
+  doc.al_pulsar("anadir", function()
+    cuantas = cuantas + 1
+    local li = doc.get("compra"):anadir("li", cosas[(cuantas - 1) % #cosas + 1], { id = "c" .. cuantas })
+    li.color = "#208040"                                   -- el recién añadido, en verde
+    if cuantas > 1 then doc.get("c" .. (cuantas - 1)).color = "#202030" end
+    contar()
+  end)
+  doc.al_pulsar("quitar", function()
+    if cuantas == 0 then return end
+    doc.get("c" .. cuantas):borrar()
+    cuantas = cuantas - 1
+    contar()
+  end)
+  doc.al_pulsar("vaciar", function() doc.get("compra"):vaciar(); cuantas = 0; contar() end)
+  doc.al_pulsar("ocultar", function()
+    local lista = doc.get("compra")
+    lista.visible = not lista.visible
+    doc.get("ocultar").texto = lista.visible and "Ocultar la lista" or "Mostrar la lista"
+  end)
+  doc.al_pulsar("arriba", function() doc.ir("#inicio") end)
+
+  -- Un formulario: campos de texto, una casilla, y lo que llega al enviar.
+  doc.al_cambiar("nombre", function(v)
+    doc.get("eco").texto = (v == "") and "(escribe tu nombre)" or ("Escribiendo: " .. v)
+  end)
+  doc.al_enviar("alta", function(valores)
+    if valores.nombre == "" then
+      doc.get("respuesta").texto = "Falta el nombre."
+      doc.get("respuesta").color = "#c03030"
+      doc.foco("nombre")
+      return
+    end
+    doc.get("respuesta").texto = "Hola, " .. valores.nombre .. ". Clave de " .. #valores.clave ..
+      " caracteres; avisos " .. (valores.avisos and "activados" or "desactivados") .. "."
+    doc.get("respuesta").color = "#208040"
+  end)
+
+  -- Teclas: cualquier letra se muestra; 'q' vuelve a la bienvenida.
+  doc.tecla(function(c)
+    if c == "q" then doc.abrir("bienvenida.html") end
+    doc.get("tecla").texto = "Última tecla: " .. c
+  end)
+</script>
+</head>
+<body>
+
+<h1 id="inicio">Páginas con comportamiento</h1>
+<p class="nota">Ir a: <a href="#seccion-contador">contador</a> · <a href="#seccion-lista">lista</a> ·
+<a href="#seccion-formulario">formulario</a> · <a href="#seccion-teclado">teclado</a></p>
+<p>Esta página tiene un <code>&lt;script type="text/lua"&gt;</code>: el mismo Lua del sistema,
+dentro del documento, en un entorno aislado. Sin JavaScript.</p>
+
+<div class="panel">
+<h2 id="seccion-contador">Un contador</h2>
+<p>Valor: <span id="contador" class="grande">0</span></p>
+<p><button id="menos">- 1</button> <button id="mas">+ 1</button> <button id="cero">Cero</button></p>
+</div>
+
+<div class="panel">
+<h2>Un reloj</h2>
+<p>Hora del sistema: <span id="hora" class="grande">--:--:--</span></p>
+<p class="nota">Se actualiza cada segundo con <code>doc.cada(1000, ...)</code>.</p>
+</div>
+
+<div class="panel">
+<h2>Un semáforo</h2>
+<p id="semaforo" style="background-color:#50c060; color:#ffffff"><b>Haz clic aquí para cambiar el color</b></p>
+<p id="estado">Semáforo en verde</p>
+</div>
+
+<div class="panel">
+<h2 id="seccion-lista">Una lista que crece y encoge</h2>
+<p><button id="anadir">Añadir</button> <button id="quitar">Quitar la última</button>
+<button id="vaciar">Vaciar</button> <button id="ocultar">Ocultar la lista</button></p>
+<p>En la lista: <b id="cuenta">0 cosas</b></p>
+<ul id="compra"></ul>
+<p class="nota">Cada cosa es un elemento nuevo, creado con <code>lista:anadir("li", texto)</code>
+y borrado con <code>el:borrar()</code>. <span id="arriba"><u>Volver arriba</u></span> (con <code>doc.ir</code>).</p>
+</div>
+
+<div class="panel">
+<h2 id="seccion-formulario">Un formulario</h2>
+<form id="alta">
+<p>Nombre: <input type="text" name="nombre" id="nombre" size="18" placeholder="tu nombre"></p>
+<p>Clave: <input type="password" name="clave" size="8" maxlength="8"></p>
+<p><input type="checkbox" name="avisos"> Quiero avisos</p>
+<p><button>Enviar</button></p>
+</form>
+<p id="eco" class="nota">(escribe tu nombre)</p>
+<p id="respuesta"></p>
+<p class="nota">Haz clic en un campo para escribir en él. <b>Tab</b> pasa al siguiente, <b>Enter</b> envía,
+<b>Esc</b> suelta el teclado. Todo con <code>doc.al_cambiar</code>, <code>doc.al_enviar</code> y <code>doc.foco</code>.</p>
+</div>
+
+<div class="panel">
+<h2 id="seccion-teclado">Teclado</h2>
+<p id="tecla">Pulsa una letra (q vuelve a la bienvenida)</p>
+</div>
+
+<hr>
+<p class="nota">Lo que una página puede hacer: <code>doc.get(id)</code> con <code>.texto</code>, <code>.color</code>,
+<code>.fondo</code>, <code>.visible</code>, <code>:anadir</code>, <code>:borrar</code> y <code>:vaciar</code>;
+<code>.valor</code>, <code>.marcado</code>; <code>doc.al_pulsar</code>, <code>doc.al_cambiar</code>, <code>doc.al_enviar</code>,
+<code>doc.foco</code>, <code>doc.cada</code>, <code>doc.tecla</code>, <code>doc.abrir</code>, <code>doc.ir</code>,
+<code>doc.titulo</code>, <code>doc.hora</code>. Nada más: ni archivos, ni red, ni syscalls. Ver <a href="GUIA_HTML.md">GUIA_HTML.md</a>.</p>
+
+</body>
+</html>

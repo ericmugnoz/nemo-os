@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Cuando algo no va - Ayuda de Nemo OS</title>
+<style>
+body { background-color:#f6f7fb; color:#1c1c20; margin:0; padding:0 }
+.cinta { background-color:#203060; color:#ffffff; padding:12px 18px; margin:0 }
+.lema { color:#b9c6e4; margin:2px 0 0 0 }
+.vuelta { color:#ffffff; text-decoration:none }
+.hoja { padding:4px 18px 24px 18px }
+h2 { color:#204080; margin:20px 0 4px 0 }
+h3 { color:#305090; margin:16px 0 2px 0 }
+.nota { background-color:#e6ecf8; padding:8px 12px; margin:12px 0 }
+.aviso { background-color:#fbeee0; padding:8px 12px; margin:12px 0 }
+.pie { color:#606070; margin:24px 0 0 0 }
+</style>
+</head>
+<body>
+
+<div class="cinta">
+<h1>Cuando algo no va</h1>
+<p class="lema"><a class="vuelta" href="indice.html">Volver al índice de la ayuda</a></p>
+</div>
+
+<div class="hoja">
+
+<p>Casi todos los tropiezos con Nemo OS son límites conocidos del sistema, no
+averías. Aquí están los que te vas a encontrar, con lo que pasa de verdad
+detrás.</p>
+
+<h2>Escribiendo</h2>
+
+<h3>"El editor dice que no va a guardar el archivo"</h3>
+
+<p>El editor y el IDE aguantan 2000 líneas de hasta 255 caracteres. Si abres
+algo más grande, sólo se carga una parte, y entonces el programa <b>se niega a
+guardar a propósito</b>: si guardara, escribiría sólo lo que cargó y borraría
+el resto.</p>
+
+<p>No es un fallo, es una protección. Para ver un archivo así entero, ábrelo
+con el visor de documentos, que no tiene ese tope.</p>
+
+<h3>"No puedo escribir tildes"</h3>
+
+<p>En <b>Notas</b> no se puede: sólo admite letras sin tilde y sin eñe. En el
+editor de texto tampoco entran los caracteres fuera del alfabeto inglés.</p>
+
+<h3>"Hago clic en el texto y el cursor no se mueve"</h3>
+
+<p>Es así: en el editor y en el IDE el cursor se mueve <b>sólo con las
+flechas</b>. El ratón sirve para los menús y para la rueda.</p>
+
+<h3>"He perdido lo que estaba escribiendo"</h3>
+
+<p>Ningún programa de Nemo OS avisa de cambios sin guardar cuando lo cierras;
+el único que te frena es Aronnax, que obliga a repetir la acción para
+descartar. Coge la costumbre de guardar antes de cerrar.</p>
+
+<h2>Archivos</h2>
+
+<h3>"Hago doble clic en un archivo de la tarjeta y no pasa nada"</h3>
+
+<p>En el disco <b>FAT</b> el doble clic no abre nada. Ese disco es sólo para
+mirar, copiar y borrar. Copia el archivo a <b>NemoFS</b> con el botón
+<b>Copiar a otro</b> y ábrelo desde ahí.</p>
+
+<h3>"No veo todos los archivos de una carpeta"</h3>
+
+<p>El Explorador lee 512 archivos por carpeta y el Navegante dibuja 200
+miniaturas. El comando <code>ls</code> de la terminal enseña 32 entradas.</p>
+
+<p>Si una carpeta tiene tantas cosas, repártelas en subcarpetas: además todo irá
+más rápido.</p>
+
+<h3>"El archivo que copié no está donde esperaba"</h3>
+
+<p><b>Copiar a otro</b> deja siempre la copia en la <b>raíz</b> del otro disco,
+nunca en una carpeta equivalente. Búscalo ahí y muévelo con Cortar y Pegar.</p>
+
+<h3>"He borrado algo sin querer"</h3>
+
+<p>No hay papelera todavía: lo borrado se pierde. Si el archivo te importa, ten
+una copia en la partición FAT antes de tocar nada.</p>
+
+<h2>Imágenes</h2>
+
+<h3>"Mi foto no se ve"</h3>
+
+<p>Nemo OS sólo entiende su formato propio <code>.nimg</code>. Un PNG o un JPEG
+no se abren, ni en el Pintor, ni en el visor de imágenes, ni dentro de una
+página.</p>
+
+<p>La conversión se hace fuera, en tu Mac o tu PC, con la herramienta
+<code>nimg_convert.py</code> que viene con el proyecto.</p>
+
+<h3>"En una página web aparece [algo] entre corchetes"</h3>
+
+<p>Ahí había una imagen que no se pudo cargar: o no es <code>.nimg</code>, o la
+ruta no lleva a ningún sitio. Lo que ves entre corchetes es su descripción.</p>
+
+<h2>Pantalla y escritorio</h2>
+
+<h3>"He cambiado la resolución y sigue igual"</h3>
+
+<p>Se aplica al arrancar, no en el momento. Menú Inicio, <b>Reiniciar</b>.</p>
+
+<h3>"No me deja poner un icono en esa casilla"</h3>
+
+<p>En el editor de escritorio sólo se pueden usar las casillas que se vean
+<b>enteras</b> dentro de su ventana. Maximiza la ventana y vuelve a probar.</p>
+
+<h2>Programas</h2>
+
+<h3>"Un programa se ha quedado colgado"</h3>
+
+<p>Abre el <b>Gestor de tareas</b>, selecciona el programa en la lista y pulsa
+<b>Cerrar tarea seleccionada</b>. Lo que no hubiera guardado se pierde.</p>
+
+<p>Si es el sistema entero el que no responde, menú Inicio, Reiniciar; y si ni
+eso, desenchufa y vuelve a enchufar.</p>
+
+<h3>"No puedo abrir más programas"</h3>
+
+<p>Caben 16 programas a la vez. El <b>Monitor del sistema</b> te dice cuántos
+hay en marcha y cuánta memoria queda; el Gestor de tareas cierra los que ya no
+uses.</p>
+
+<h3>"El visor dice que el documento es demasiado grande"</h3>
+
+<p>El visor de documentos trabaja con un tope de memoria propio. Un documento
+muy largo, sobre todo si trae imágenes, no cabe. Pártelo en varios archivos
+enlazados entre sí: es lo que se hizo con las guías largas del sistema.</p>
+
+<h3>"Un enlace de una página dice Enlace roto"</h3>
+
+<p>Los enlaces sólo llegan a archivos de la propia tarjeta. Si apunta a una
+dirección de internet, no hay forma de seguirlo: en Nemo OS no hay navegador
+web.</p>
+
+<h2>Arranque</h2>
+
+<h3>"Arrancó con otra resolución o sin mis iconos"</h3>
+
+<p>Los ajustes viven en la tarjeta, en el disco NemoFS. Si has reformateado esa
+partición o has puesto el sistema en otra tarjeta, se vuelve a empezar de
+fábrica.</p>
+
+<h3>"Apago y el equipo sigue encendido"</h3>
+
+<p>Es lo normal en una Raspberry Pi: <b>Apagar</b> detiene el procesador de
+forma segura, pero el sistema no puede cortarse la corriente a sí mismo. Cuando
+la pantalla se quede quieta, desenchufa.</p>
+
+<div class="aviso">
+<p><b>Nunca saques la tarjeta con el equipo encendido</b>, y menos mientras
+estés guardando algo o con el Particionador abierto.</p>
+</div>
+
+<h2>Si nada de esto lo explica</h2>
+
+<p>En la carpeta MANUALES están las guías técnicas del sistema, con mucho más
+detalle. La página <a href="programar.html">Programar en Nemo OS</a> las lista
+todas.</p>
+
+<p class="pie">Ayuda de Nemo OS.</p>
+
+</div>
+</body>
+</html>

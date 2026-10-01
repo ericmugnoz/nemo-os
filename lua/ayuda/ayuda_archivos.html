@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Archivos y discos - Ayuda de Nemo OS</title>
+<style>
+body { background-color:#f6f7fb; color:#1c1c20; margin:0; padding:0 }
+.cinta { background-color:#203060; color:#ffffff; padding:12px 18px; margin:0 }
+.lema { color:#b9c6e4; margin:2px 0 0 0 }
+.vuelta { color:#ffffff; text-decoration:none }
+.hoja { padding:4px 18px 24px 18px }
+h2 { color:#204080; margin:18px 0 4px 0 }
+h3 { color:#305090; margin:14px 0 2px 0 }
+.nota { background-color:#e6ecf8; padding:8px 12px; margin:12px 0 }
+.aviso { background-color:#fbeee0; padding:8px 12px; margin:12px 0 }
+.pie { color:#606070; margin:24px 0 0 0 }
+</style>
+</head>
+<body>
+
+<div class="cinta">
+<h1>Archivos y discos</h1>
+<p class="lema"><a class="vuelta" href="indice.html">Volver al índice de la ayuda</a></p>
+</div>
+
+<div class="hoja">
+
+<h2>Hay dos discos, no uno</h2>
+
+<p>Esto es lo primero que hay que entender, porque explica media docena de cosas
+que, si no, parecerían caprichos.</p>
+
+<table>
+<tr><th>Disco</th><th>Se llama</th><th>Qué es</th></tr>
+<tr><td><b>C:</b></td><td>NemoFS</td>
+<td>El disco propio de Nemo OS. Aquí vive el sistema y aquí trabajas tú.
+Admite carpetas, renombrar, copiar y todo lo demás.</td></tr>
+<tr><td><b>F:</b></td><td>FAT</td>
+<td>La partición de arranque de la tarjeta: la única que ve tu Mac o tu PC
+cuando metes la tarjeta en él. Es el puente entre los dos mundos.</td></tr>
+</table>
+
+<p>Los dos están en la misma tarjeta de memoria, en dos particiones distintas.</p>
+
+<div class="aviso">
+<p>En el disco <b>F:</b> puedes mirar, copiar y borrar, pero <b>no</b> crear
+carpetas, <b>no</b> renombrar y <b>no</b> abrir archivos con doble clic. Para
+trabajar con un archivo que venga de fuera, cópialo primero a <b>C:</b>.</p>
+</div>
+
+<h2>Las carpetas del sistema</h2>
+
+<p>En la raíz de C: hay unas cuantas carpetas que crea el propio sistema:</p>
+
+<table>
+<tr><th>Carpeta</th><th>Para qué</th></tr>
+<tr><td>DOCUMENTOS</td><td>Tus cosas. Es donde se abren por defecto los cuadros
+de abrir y guardar, y donde están las guías del sistema.</td></tr>
+<tr><td>DOCUMENTOS/IMAGENES</td><td>Imágenes. El Pintor y el visor de imágenes
+empiezan aquí, y el fondo de pantalla sale de aquí.</td></tr>
+<tr><td>DOCUMENTOS/AYUDA</td><td>Estas páginas que estás leyendo.</td></tr>
+<tr><td>PROGRAMAS</td><td>Los programas del sistema. No hace falta tocarla.</td></tr>
+<tr><td>ACCESORIOS</td><td>Las aplicaciones escritas en Lua.</td></tr>
+<tr><td>SISTEMA</td><td>Las bibliotecas internas. Mejor no tocar nada de aquí.</td></tr>
+<tr><td>NOTAS</td><td>La crea el programa Notas la primera vez que lo usas.</td></tr>
+</table>
+
+<h2>El Explorador</h2>
+
+<p>Es el programa de archivos de toda la vida: carpetas a la izquierda,
+contenido a la derecha.</p>
+
+<p>Arriba tiene los botones <b>NemoFS</b> y <b>FAT</b> para cambiar de disco,
+<b>Subir</b>, <b>Carpeta</b> (crea una nueva), <b>Copiar a otro</b> y
+<b>Salir</b>.</p>
+
+<p>El <b>clic derecho</b> sobre un archivo abre un menú con Eliminar, Copiar,
+Cortar, Renombrar y Pegar. "Cortar" mueve en vez de copiar, y funciona también
+con carpetas enteras.</p>
+
+<p>El <b>doble clic</b> abre el archivo con el programa que le toca:</p>
+
+<table>
+<tr><th>Tipo</th><th>Se abre con</th></tr>
+<tr><td>Una carpeta</td><td>Entra en ella</td></tr>
+<tr><td>.pro y .lua</td><td>Se ejecutan: son programas</td></tr>
+<tr><td>.nb</td><td>El IDE</td></tr>
+<tr><td>.html, .htm, .md</td><td>El visor de documentos</td></tr>
+<tr><td>Todo lo demás, .txt incluido</td><td>El editor de texto</td></tr>
+</table>
+
+<p>Con la rueda del ratón se desplaza el panel que tengas debajo del puntero.
+La tecla <b>Enter</b> abre lo que esté seleccionado y la tecla <b>Q</b> cierra
+el Explorador.</p>
+
+<h3>Lo que conviene saber</h3>
+
+<ul>
+<li>El botón <b>Carpeta</b> no pregunta el nombre: crea NUEVA1, NUEVA2... y
+luego la renombras con el clic derecho.</li>
+<li>Al renombrar, el texto se pasa <b>a mayúsculas</b> automáticamente, y no
+caben más de 27 caracteres.</li>
+<li>Una carpeta muestra como mucho 512 archivos. Si tienes más, reparte.</li>
+<li><b>Copiar a otro</b> deja siempre la copia en la <b>raíz</b> del otro disco,
+no en una carpeta parecida.</li>
+</ul>
+
+<h2>El Navegante</h2>
+
+<p>Es el otro explorador, y su gracia es que enseña <b>miniaturas de verdad</b>
+de las imágenes .nimg en vez de un icono genérico. Tiene dos vistas, cuadrícula
+y lista, que se cambian con el botón <b>Vista</b>.</p>
+
+<p>Sus botones son <b>Atrás</b>, <b>Arriba</b>, <b>NemoFS</b>, <b>FAT</b>,
+<b>Vista</b>, <b>Releer</b> y <b>Fondo</b>. Ese último pone la imagen .nimg que
+tengas seleccionada como fondo de pantalla.</p>
+
+<p>Con el teclado: <b>Enter</b> abre, <b>Retroceso</b> vuelve a la carpeta
+anterior y <b>Esc</b> cierra.</p>
+
+<p>El Navegante no crea, ni borra, ni renombra, ni copia: para eso está el
+Explorador. Y sólo dibuja las primeras 200 miniaturas de una carpeta.</p>
+
+<h2>El cuadro de abrir y guardar</h2>
+
+<p>Casi todos los programas usan el mismo cuadro para abrir y para guardar, así
+que aprenderlo una vez vale para todos.</p>
+
+<ul>
+<li><b>Buscar en:</b> arriba, dice en qué carpeta estás. Púlsalo y se despliega
+el camino desde la raíz, para saltar a cualquier carpeta de arriba de un clic.</li>
+<li>El botón de la <b>flecha</b>, a su derecha, sube un nivel.</li>
+<li>La <b>columna de la izquierda</b> son atajos a la raíz y a las carpetas
+principales.</li>
+<li>En la lista, <b>un clic</b> selecciona y <b>dos clics</b> abren. Las
+carpetas salen siempre las primeras.</li>
+<li><b>Nombre</b> es donde puedes escribir el nombre a mano, tanto al guardar
+como al abrir.</li>
+<li><b>Tipo</b> filtra la lista por extensión: púlsalo y elige.</li>
+<li><b>Esc</b> cancela y <b>Enter</b> confirma.</li>
+</ul>
+
+<h2>Llevarte tus archivos a otro ordenador</h2>
+
+<p>El camino es la partición FAT, la que tu Mac o tu PC sabe leer:</p>
+
+<ul>
+<li>Abre el <b>Explorador</b> y ponte en <b>NemoFS</b>.</li>
+<li>Selecciona el archivo y pulsa <b>Copiar a otro</b>. La copia aparece en la
+raíz del disco FAT.</li>
+<li>Apaga el equipo, saca la tarjeta y métela en el otro ordenador: el archivo
+está en la partición de arranque, junto a los archivos del sistema.</li>
+</ul>
+
+<p>Para traer algo de fuera, al revés: déjalo en la raíz de la partición de
+arranque desde el otro ordenador, y en Nemo OS cópialo de <b>FAT</b> a
+<b>NemoFS</b>.</p>
+
+<div class="nota">
+<p>Los nombres de archivo de Nemo OS llegan hasta 31 caracteres. Si traes algo
+con un nombre muy largo, acórtalo antes.</p>
+</div>
+
+<p class="pie">Ayuda de Nemo OS.</p>
+
+</div>
+</body>
+</html>

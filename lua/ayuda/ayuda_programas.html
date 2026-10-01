@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Los programas - Ayuda de Nemo OS</title>
+<style>
+body { background-color:#f6f7fb; color:#1c1c20; margin:0; padding:0 }
+.cinta { background-color:#203060; color:#ffffff; padding:12px 18px; margin:0 }
+.lema { color:#b9c6e4; margin:2px 0 0 0 }
+.vuelta { color:#ffffff; text-decoration:none }
+.hoja { padding:4px 18px 24px 18px }
+h2 { color:#204080; margin:20px 0 4px 0 }
+h3 { color:#305090; margin:16px 0 2px 0 }
+.nota { background-color:#e6ecf8; padding:8px 12px; margin:12px 0 }
+.aviso { background-color:#fbeee0; padding:8px 12px; margin:12px 0 }
+.pie { color:#606070; margin:24px 0 0 0 }
+</style>
+</head>
+<body>
+
+<div class="cinta">
+<h1>Los programas</h1>
+<p class="lema"><a class="vuelta" href="indice.html">Volver al índice de la ayuda</a></p>
+</div>
+
+<div class="hoja">
+
+<p>Una ficha por aplicación: para qué sirve, cómo se usa y qué no sabe hacer
+todavía. Esto último está aquí a propósito: es mejor saberlo antes que
+descubrirlo a mitad de un trabajo.</p>
+
+<h2>Escribir y leer</h2>
+
+<h3>Editor de texto</h3>
+
+<p>Para escribir texto plano y para tocar los archivos de configuración del
+sistema. Tiene menús de <b>Archivo</b> (Nuevo, Abrir, Guardar, Guardar como,
+Salir), <b>Edición</b> (Cortar, Copiar, Pegar, Seleccionar todo) y <b>Ayuda</b>.</p>
+
+<p>Se escribe con el teclado y se mueve el cursor con las flechas. La rueda del
+ratón desplaza el texto.</p>
+
+<p>Lo que conviene saber:</p>
+<ul>
+<li><b>No hay atajos de teclado</b>: cortar, copiar y pegar están sólo en el
+menú Edición.</li>
+<li>Hacer clic dentro del texto <b>no</b> mueve el cursor. Se mueve con las
+flechas.</li>
+<li><b>Seleccionar todo</b> selecciona en realidad sólo la línea donde está el
+cursor, así que cortar y copiar trabajan siempre dentro de una línea.</li>
+<li>El tope es 2000 líneas y 255 caracteres por línea.</li>
+<li>Si abres un archivo que <b>no cabe entero</b>, el editor te avisa y se
+niega a guardarlo. No es un fallo: es que guardarlo destruiría la parte que no
+llegó a cargar.</li>
+<li>No avisa de cambios sin guardar al salir.</li>
+</ul>
+
+<h3>Notas</h3>
+
+<p>Un bloc de notas rápido: la lista de notas a la izquierda, el texto a la
+derecha, y los botones <b>Nueva</b>, <b>Borrar</b> y <b>Guardar</b>. Cada nota
+es un archivo en la carpeta NOTAS, con la fecha y la hora en el nombre.</p>
+
+<p>Sólo admite letras sin tilde: no se pueden escribir <b>á, é, í, ó, ú ni
+ñ</b>. Y <b>Borrar</b> borra en el acto, sin preguntar.</p>
+
+<h3>Visor de documentos</h3>
+
+<p>Es lo que estás usando ahora mismo. Abre páginas <code>.html</code> y
+documentos <code>.md</code>, con sus tablas, sus listas y sus imágenes.</p>
+
+<table>
+<tr><th>Tecla</th><th>Hace</th></tr>
+<tr><td>Flecha arriba y abajo</td><td>Desplazar el documento</td></tr>
+<tr><td>Retroceso</td><td>Volver al documento anterior</td></tr>
+<tr><td>+ o =</td><td>Letra más grande</td></tr>
+<tr><td>-</td><td>Letra más pequeña</td></tr>
+<tr><td>Esc</td><td>Cerrar</td></tr>
+</table>
+
+<p>Los enlaces se siguen con un clic, pero <b>sólo llevan a archivos de la
+propia tarjeta</b>: no hay internet, así que un enlace a una dirección web dará
+"Enlace roto". Tampoco hay barra de direcciones ni buscar dentro de la página.</p>
+
+<h2>Imágenes</h2>
+
+<h3>Pintor</h3>
+
+<p>El editor de imágenes, pensado para dibujar píxel a píxel. Herramientas:
+lápiz, goma, cubo de relleno, gotero, línea, rectángulo hueco y relleno, elipse
+hueca y rellena, y selección.</p>
+
+<ul>
+<li>El <b>clic izquierdo</b> pinta con el color A y el <b>derecho</b> con el
+color B. En la paleta, igual: izquierdo cambia el color A, derecho el B.</li>
+<li>La <b>rueda</b> hace zoom.</li>
+<li>Los menús traen cambiar el tamaño, doblar, partir por la mitad, rotar y
+espejo.</li>
+<li>Deshacer guarda como mucho 8 pasos, y menos cuanto más grande sea la
+imagen: en una de 1024x1024 sólo caben dos. <b>No hay rehacer.</b></li>
+<li>El tamaño máximo es 1024 por 1024.</li>
+<li>No avisa de cambios sin guardar.</li>
+</ul>
+
+<h3>Visor de imágenes</h3>
+
+<p>Pasa una a una las imágenes <code>.nimg</code> de la carpeta
+DOCUMENTOS/IMAGENES, con los botones <b>Anterior</b> y <b>Siguiente</b>. La
+imagen siempre se ve encajada en la ventana; no hay zoom.</p>
+
+<h3>Dibujo</h3>
+
+<p>Un cuaderno para garabatear con el ratón. Cuatro colores, que se cambian con
+las teclas <b>1, 2, 3 y 4</b>. El <b>botón derecho borra la hoja entera</b>, sin
+preguntar. No se puede guardar lo que dibujes.</p>
+
+<div class="nota">
+<p>Todas las imágenes de Nemo OS están en formato propio <code>.nimg</code>.
+Para convertir un PNG o un JPEG hace falta la herramienta
+<code>nimg_convert.py</code>, que se ejecuta en tu Mac o tu PC, no aquí.</p>
+</div>
+
+<h2>Utilidades</h2>
+
+<h3>Calculadora</h3>
+
+<p>Suma, resta, multiplica y divide, con la coma decimal y el cambio de signo.
+Sólo funciona con el ratón: no lee el teclado.</p>
+
+<p><b>No respeta la prioridad de las operaciones</b>: cada una se resuelve según
+llega, así que 2 + 3 × 4 da 20, no 14. Si necesitas prioridad, haz las
+operaciones por partes.</p>
+
+<h3>Reloj</h3>
+
+<p>La hora y la fecha del reloj del propio equipo, en una ventana pequeña. No
+tiene alarma ni cronómetro.</p>
+
+<h3>Monitor del sistema</h3>
+
+<p>Cuánto disco queda, cuánta memoria de tareas se está usando, cuánta memoria
+lleva gastada el núcleo, y el reparto de turnos entre los programas en marcha.</p>
+
+<p>Ese último porcentaje <b>no es uso de procesador</b>: es cuántos turnos le ha
+tocado a cada programa. Un programa que sólo espera acumula turnos igual.</p>
+
+<h3>Gestor de tareas</h3>
+
+<p>La lista de programas en marcha, con un botón para cerrar el que elijas y
+otro para actualizar la lista. Úsalo cuando un programa deje de responder.</p>
+
+<p>Cierra sin preguntar y sin guardar nada.</p>
+
+<h3>Terminal</h3>
+
+<p>La línea de órdenes. Está explicada en
+<a href="programar.html">Programar en Nemo OS</a>, con la lista completa de
+comandos.</p>
+
+<h2>Diseñar y programar</h2>
+
+<p>El <b>IDE</b>, el lenguaje <b>Nemo Basic</b>, el diseñador visual
+<b>Aronnax</b> y <b>Lua</b> tienen su propia página:
+<a href="programar.html">Programar en Nemo OS</a>.</p>
+
+<p class="pie">Ayuda de Nemo OS.</p>
+
+</div>
+</body>
+</html>
